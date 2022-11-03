@@ -5,10 +5,11 @@ import random
 random.seed(29)
 from promptsource.templates import DatasetTemplates
 
-template = DatasetTemplates('hellaswag')["how_ends"]
-dataset = load_dataset("hellaswag")
-
 NUM_EXAMPLES_IN_PROMPT = 5
+SELECTED_PROMPT_NAME = "how_ends"
+
+template = DatasetTemplates('hellaswag')[SELECTED_PROMPT_NAME]
+dataset = load_dataset("hellaswag")
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--prompt', type=str, default='', help='Either text or code.')
