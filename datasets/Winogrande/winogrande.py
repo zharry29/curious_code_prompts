@@ -69,8 +69,7 @@ class Winogrande():
         for example in tqdm(dataset['validation']):
             input_text, output_text = self.template.apply(example)
             # print(prompt + input_text + '\n\nAnswer:')
-            # pred = run_llm(prompt + input_text + '\n\nAnswer:', args.model)
-            pred = '2'
+            pred = self.run_llm(prompt + input_text + '\n\nAnswer:', args.model)
             gold = example['answer']
             preds.append(pred)
             golds.append(gold)
