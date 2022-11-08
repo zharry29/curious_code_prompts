@@ -11,18 +11,16 @@ from sklearn.metrics import accuracy_score
 parser = argparse.ArgumentParser()
 parser.add_argument('--prompt', required=True, type=str, help='Either text or code.')
 parser.add_argument('--model', required=True, type=str, help='Either davinci, curie or codex.')
-#parser.add_argument('--dataset', type=str, help='Name of the datasset')
-#parser.add_argument('--xxx', action='store_true', help='')
 parser.add_argument('--key', required=True, type=str, help='The name of the OpenAI API key file.')
 
 args = parser.parse_args()
 openai.api_key = open(f'../../_private/{args.key}.key').read()
 
 NUM_EXAMPLES_IN_PROMPT = 5
-SELECTED_PROMPT_NAME = "how_ends"
+SELECTED_PROMPT_NAME = "based_on_that"
 
-template = DatasetTemplates('hellaswag')[SELECTED_PROMPT_NAME]
-dataset = load_dataset("hellaswag")
+template = DatasetTemplates('yelp_review_full')[SELECTED_PROMPT_NAME]
+dataset = load_dataset("yelp_review_full")
 
 def predict():
     # Build prompt
@@ -32,8 +30,9 @@ def predict():
         for example_index in example_indices:
             example = dataset['train'][example_index]
             input_text, output_text = template.apply(example)
-            text_prompt += input_text + '\n\nAnswer: ' + output_text + '\n\n\n'
+            text_prompt += input_text + ' ' + output_text + '.\n\n'
             #print(text_prompt)
+            #raise SystemExit()
         return(text_prompt)
 
     def build_code_prompt():
@@ -73,16 +72,20 @@ def predict():
         prompt = build_text_prompt()
     elif args.prompt == "code":
         prompt = build_code_prompt()
-    #print(prompt)
     preds = []
     golds = []
     print("Total examples: ", len(dataset['test']))
     count = 0
-    for example in dataset['validation']:
+    for example in dataset['test']:
         count += 1
         print(count)
         input_text, output_text = template.apply(example)
-        pred = run_llm(prompt + input_text + '\n\nAnswer: Ending', args.model)
+        #print(prompt + input_text)
+        pred_text = run_llm(prompt + input_text, args.model)
+        if "negative" in pred_text:
+            pred = 0
+        else:
+            pred = 1
         gold = example['label']
         preds.append(pred)
         golds.append(gold)

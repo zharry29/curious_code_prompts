@@ -21,8 +21,11 @@ openai.api_key = open(f'../../_private/{args.key}.key').read()
 NUM_EXAMPLES_IN_PROMPT = 5
 SELECTED_PROMPT_NAME = "how_ends"
 
-template = DatasetTemplates('hellaswag')[SELECTED_PROMPT_NAME]
-dataset = load_dataset("hellaswag")
+template = DatasetTemplates('story_cloze')
+print(template.templates)
+raise SystemExit()
+#[SELECTED_PROMPT_NAME]
+dataset = load_dataset("story_cloze")
 
 def predict():
     # Build prompt
@@ -76,11 +79,7 @@ def predict():
     #print(prompt)
     preds = []
     golds = []
-    print("Total examples: ", len(dataset['test']))
-    count = 0
     for example in dataset['validation']:
-        count += 1
-        print(count)
         input_text, output_text = template.apply(example)
         pred = run_llm(prompt + input_text + '\n\nAnswer: Ending', args.model)
         gold = example['label']
