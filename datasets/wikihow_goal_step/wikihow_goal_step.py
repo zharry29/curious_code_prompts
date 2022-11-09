@@ -7,20 +7,36 @@ import random
 from promptsource.templates import DatasetTemplates
 import time
 from sklearn.metrics import accuracy_score
+import csv
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--prompt', required=True, type=str, help='Either text or code.')
 parser.add_argument('--model', required=True, type=str, help='Either davinci, curie or codex.')
+#parser.add_argument('--dataset', type=str, help='Name of the datasset')
+#parser.add_argument('--xxx', action='store_true', help='')
 parser.add_argument('--key', required=True, type=str, help='The name of the OpenAI API key file.')
 
 args = parser.parse_args()
 openai.api_key = open(f'../../_private/{args.key}.key').read()
 
 NUM_EXAMPLES_IN_PROMPT = 5
-SELECTED_PROMPT_NAME = "based_on_that"
+#SELECTED_PROMPT_NAME = "how_ends"
 
-template = DatasetTemplates('yelp_review_full')[SELECTED_PROMPT_NAME]
-dataset = load_dataset("yelp_review_full")
+def load_data():
+    dataset = {'train': [], 'test': []}
+    for split in ['train', 'test']:
+        with open(f'goal_{split}.csv', encoding = "ISO-8859-1") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                dataset[split].append(row)
+    return dataset
+
+dataset = load_data()
+
+def apply_template(example):
+    input_prompt = f"Given an action: {example['step'].strip('.')}\nWhat is the most likely goal of that action?\n(a) {example['goal0']}\n(b) {example['goal1']}\n(c) {example['goal2']}\n(d) {example['goal3']}\nThe most likely goal is: "
+    output_prompt = ['(a)', '(b)', '(c)', '(d)'][int(example['label'])] + ' ' + example[f"goal{example['label']}"]
+    return input_prompt, output_prompt
 
 def predict():
     # Build prompt
@@ -29,10 +45,9 @@ def predict():
         example_indices = random.sample(range(len(dataset['train'])), NUM_EXAMPLES_IN_PROMPT)
         for example_index in example_indices:
             example = dataset['train'][example_index]
-            input_text, output_text = template.apply(example)
-            text_prompt += input_text + ' ' + output_text + '.\n\n'
+            input_text, output_text = apply_template(example)
+            text_prompt += input_text + ' ' + output_text + '\n\n'
             #print(text_prompt)
-            #raise SystemExit()
         return(text_prompt)
 
     def build_code_prompt():
@@ -79,14 +94,19 @@ def predict():
     for example in dataset['test']:
         count += 1
         print(count)
-        input_text, output_text = template.apply(example)
-        #print(prompt + input_text)
+        input_text, output_text = apply_template(example)
         pred_text = run_llm(prompt + input_text, args.model)
-        if "negative" in pred_text:
-            pred = 0
-        else:
+        #print(prompt + input_text)
+        #raise SystemExit()
+        if '(b)' in pred_text:
             pred = 1
-        gold = example['label']
+        elif '(c)' in pred_text:
+            pred = 2
+        elif '(d)' in pred_text:
+            pred = 3
+        else:
+            pred = 0
+        gold = int(example['label'])
         preds.append(pred)
         golds.append(gold)
 
