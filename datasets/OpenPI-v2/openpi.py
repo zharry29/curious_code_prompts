@@ -115,22 +115,22 @@ class OpenPI():
                             post = utils.choose_openpi_options(post)
                         gold[i].append(f'The {attr} of {entity} is {pre} before and {post} afterwards.')
             golds.append(gold)
-            print(golds)
-            raise SystemExit()
             # preds.append(pred)
         
         # with open(f'pred_{self.idx}.txt', 'w') as f:
         #     f.writelines([x + '\n' for x in preds])
         # with open(f'gold_{self.idx}.txt', 'w') as f:
         #     f.writelines([x + '\n' for x in golds])
+
+    def parse_gpt3(self):
+        pass
+
+    def parse_codex(self):
+        pass
     
+    # TODO: How do we evaluate the result of OpenPI? 
     def evaluate(self):
-        with open(f'pred_{self.idx}.txt', 'r') as f:
-            preds = [x.strip() for x in f.readlines()]
-        with open(f'gold_{self.idx}.txt', 'r') as f:
-            golds = [x.strip() for x in f.readlines()]
-        print("Accuracy", accuracy_score(golds, preds))
-        return accuracy_score(golds, preds)
+        pass 
 
 
 parser = argparse.ArgumentParser()
