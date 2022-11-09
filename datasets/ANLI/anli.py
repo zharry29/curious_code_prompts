@@ -13,15 +13,16 @@ logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
 random.seed(29)
 
 
-class Winogrande():
-    def __init__(self, templates):
+class ANLI():
+    def __init__(self, templates, idx):
         self.template = templates
+        self.idx = idx
     
     def build_text_prompt(self):
         text_prompt = ""
-        example_indices = random.sample(range(len(dataset['train'])), NUM_EXAMPLES_IN_PROMPT)
+        example_indices = random.sample(range(len(dataset[f'train_r{self.idx}'])), NUM_EXAMPLES_IN_PROMPT)
         for example_index in example_indices:
-            example = dataset['train'][example_index]
+            example = dataset[f'train_r{self.idx}'][example_index]
             input_text, output_text = self.template.apply(example)
             text_prompt += input_text + '\n\nAnswer: ' + output_text + '\n\n\n'
         return(text_prompt)
@@ -65,24 +66,22 @@ class Winogrande():
 
         preds = []
         golds = []
-        c = 0
-        for example in tqdm(dataset['validation']):
+        for example in tqdm(dataset[f'dev_r{self.idx}']):
             input_text, output_text = self.template.apply(example)
-            # print(prompt + input_text + '\n\nAnswer:')
             pred = self.run_llm(prompt + input_text + '\n\nAnswer:', args.model)
             gold = example['answer']
             preds.append(pred)
             golds.append(gold)
         
-        with open('pred.txt', 'w') as f:
+        with open(f'pred_{self.idx}.txt', 'w') as f:
             f.writelines([x + '\n' for x in preds])
-        with open('gold.txt', 'w') as f:
+        with open(f'gold_{self.idx}.txt', 'w') as f:
             f.writelines([x + '\n' for x in golds])
     
-    def evaluate():
-        with open('pred.txt', 'r') as f:
+    def evaluate(self):
+        with open(f'pred_{self.idx}.txt', 'r') as f:
             preds = [x.strip() for x in f.readlines()]
-        with open('gold.txt', 'r') as f:
+        with open(f'gold_{self.idx}.txt', 'r') as f:
             golds = [x.strip() for x in f.readlines()]
         print("Accuracy", accuracy_score(golds, preds))
         return accuracy_score(golds, preds)
@@ -99,13 +98,14 @@ parser.add_argument('--key', type=str, help='The name of the OpenAI API key file
 if __name__ == '__main__':
     args = parser.parse_args()
 
-    data_name = 'winogrande'
+    data_name = 'anli'
     NUM_EXAMPLES_IN_PROMPT = 5
 
     dataset, templates = utils.load_data(data_name)
-    inference_model = Winogrande(templates)
-    inference_model.predict()
-    inference_model.evaluate()
+    for i in range(1, 4):
+        inference_model = ANLI(templates, i)
+        inference_model.predict()
+        # inference_model.evaluate()
 
 
 

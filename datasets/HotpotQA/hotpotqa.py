@@ -13,7 +13,7 @@ logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
 random.seed(29)
 
 
-class Winogrande():
+class HotpotQA():
     def __init__(self, templates):
         self.template = templates
     
@@ -65,10 +65,8 @@ class Winogrande():
 
         preds = []
         golds = []
-        c = 0
         for example in tqdm(dataset['validation']):
             input_text, output_text = self.template.apply(example)
-            # print(prompt + input_text + '\n\nAnswer:')
             pred = self.run_llm(prompt + input_text + '\n\nAnswer:', args.model)
             gold = example['answer']
             preds.append(pred)
@@ -99,13 +97,13 @@ parser.add_argument('--key', type=str, help='The name of the OpenAI API key file
 if __name__ == '__main__':
     args = parser.parse_args()
 
-    data_name = 'winogrande'
+    data_name = 'hotpot_qa'
     NUM_EXAMPLES_IN_PROMPT = 5
 
     dataset, templates = utils.load_data(data_name)
-    inference_model = Winogrande(templates)
+    inference_model = HotpotQA(templates)
     inference_model.predict()
-    inference_model.evaluate()
+    # inference_model.evaluate()
 
 
 
