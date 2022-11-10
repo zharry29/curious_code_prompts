@@ -3,7 +3,7 @@ from ast import main
 import openai
 from datasets import load_dataset
 import random
-random.seed(29)
+#random.seed(29)
 from promptsource.templates import DatasetTemplates
 import time
 from sklearn.metrics import accuracy_score
