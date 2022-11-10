@@ -1,12 +1,11 @@
 import argparse
-from ast import main
 import openai
 from datasets import load_dataset
 import random
-#random.seed(29)
+random.seed(29)
 from promptsource.templates import DatasetTemplates
 import time
-from sklearn.metrics import accuracy_score
+from rouge import FilesRouge
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--prompt', required=True, type=str, help='Either text or code.')
@@ -16,11 +15,12 @@ parser.add_argument('--key', required=True, type=str, help='The name of the Open
 args = parser.parse_args()
 openai.api_key = open(f'../../_private/{args.key}.key').read()
 
-NUM_EXAMPLES_IN_PROMPT = 5
-SELECTED_PROMPT_NAME = "based_on_that"
+NUM_EXAMPLES_IN_PROMPT = 2 # TODO: Double check if we should change this based on model
+SELECTED_PROMPT_NAME = "2_or_3_sentences"
+rouge = FilesRouge()
 
-template = DatasetTemplates('yelp_review_full')[SELECTED_PROMPT_NAME]
-dataset = load_dataset("yelp_review_full")
+template = DatasetTemplates("cnn_dailymail/3.0.0")[SELECTED_PROMPT_NAME]
+dataset = load_dataset("cnn_dailymail", "3.0.0", cache_dir="/nlp/data/huggingface_cache")
 
 def predict():
     # Build prompt
@@ -30,16 +30,14 @@ def predict():
         for example_index in example_indices:
             example = dataset['train'][example_index]
             input_text, output_text = template.apply(example)
-            text_prompt += input_text + ' ' + output_text + '.\n\n'
-            #print(text_prompt)
-            #raise SystemExit()
+            text_prompt += input_text + '\n\nAnswer: ' + output_text + '\n\n\n'
         return(text_prompt)
 
     def build_code_prompt():
         code_prompt = ""
         return code_prompt
 
-    def run_llm(prompt, model, temperature=0, stop=['\n']):
+    def run_llm(prompt, model, temperature=0, stop=['\n\n\n']):
         model_name = {
             "davinci": "text-davinci-002",
             "curie": "text-curie-001",
@@ -74,34 +72,33 @@ def predict():
         prompt = build_code_prompt()
     preds = []
     golds = []
-    print("Total examples: ", len(dataset['test']))
+    print("Total examples: ", len(dataset['validation']))
     count = 0
-    for example in dataset['test']:
+    for example in dataset['validation']:
         count += 1
-        print(count)
         input_text, output_text = template.apply(example)
-        #print(prompt + input_text)
-        pred_text = run_llm(prompt + input_text, args.model)
-        if "negative" in pred_text:
-            pred = 0
-        else:
-            pred = 1
-        gold = example['label']
+        pred = run_llm(prompt + input_text + '\n\nAnswer:', args.model)
+        gold = example['highlights']
+        # print("Model prediction\n" + pred)
+        # print("Gold prediction\n" + gold)
         preds.append(pred)
         golds.append(gold)
-
+    # print(preds)
+    # print(golds)
     with open('pred.txt', 'w') as f:
-        f.writelines([x + '\n' for x in preds])
+        f.writelines([x.replace('\n', ' ') + '\n' for x in preds])
     with open('gold.txt', 'w') as f:
-        f.writelines([x + '\n' for x in golds])
+        f.writelines([x.replace('\n', ' ') + '\n' for x in golds])
 
 def evaluate():
-    with open('pred.txt', 'r') as f:
-        preds = [x.strip() for x in f.readlines()]
-    with open('gold.txt', 'r') as f:
-        golds = [x.strip() for x in f.readlines()]
-    print("Accuracy", accuracy_score(golds, preds))
-    return "Accuracy", accuracy_score(golds, preds)
+    scores = rouge.get_scores('pred.txt','gold.txt',avg=True) #TODO: Double check that this is correct/makes sense
+    print("Rouge Score", scores)
+    # with open('pred.txt', 'r') as f:
+    #     preds = [x.strip() for x in f.readlines()]
+    # with open('gold.txt', 'r') as f:
+    #     golds = [x.strip() for x in f.readlines()]
+    # print("Accuracy", accuracy_score(golds, preds))
+    return "Rouge", scores
 
 if __name__ == "__main__":
     predict()

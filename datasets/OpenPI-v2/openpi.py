@@ -30,7 +30,7 @@ class OpenPI():
             for i, step in enumerate(steps):
                 step_state_changes = step['state_changes']
                 step_desc = step['description']
-                prompt += f'Step {i}: {step_desc}\n\n'
+                prompt += f'Step {i+1}: {step_desc}\n\n'
                 prompt += f'Entity status changes:\n'
                 if step_state_changes:
                     for state_change in step_state_changes:
@@ -98,7 +98,7 @@ class OpenPI():
             for i, step in enumerate(steps):
                 step_state_changes = step['state_changes']
                 step_desc = step['description']
-                prompt += f'Step {i}: {step_desc}\n\n'
+                prompt += f'Step {i+1}: {step_desc}\n\n'
                 prompt += f'Entity status changes:\n'
                 preds = self.run_llm(prompt)
                 # TODO: Append generation result to prompt as context
@@ -115,22 +115,22 @@ class OpenPI():
                             post = utils.choose_openpi_options(post)
                         gold[i].append(f'The {attr} of {entity} is {pre} before and {post} afterwards.')
             golds.append(gold)
-            print(golds)
-            raise SystemExit()
             # preds.append(pred)
         
         # with open(f'pred_{self.idx}.txt', 'w') as f:
         #     f.writelines([x + '\n' for x in preds])
         # with open(f'gold_{self.idx}.txt', 'w') as f:
         #     f.writelines([x + '\n' for x in golds])
+
+    def parse_gpt3(self):
+        pass
+
+    def parse_codex(self):
+        pass
     
+    # TODO: How do we evaluate the result of OpenPI? 
     def evaluate(self):
-        with open(f'pred_{self.idx}.txt', 'r') as f:
-            preds = [x.strip() for x in f.readlines()]
-        with open(f'gold_{self.idx}.txt', 'r') as f:
-            golds = [x.strip() for x in f.readlines()]
-        print("Accuracy", accuracy_score(golds, preds))
-        return accuracy_score(golds, preds)
+        pass 
 
 
 parser = argparse.ArgumentParser()
