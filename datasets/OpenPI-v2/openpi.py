@@ -30,7 +30,7 @@ class OpenPI():
             for i, step in enumerate(steps):
                 step_state_changes = step['state_changes']
                 step_desc = step['description']
-                prompt += f'Step {i}: {step_desc}\n\n'
+                prompt += f'Step {i+1}: {step_desc}\n\n'
                 prompt += f'Entity status changes:\n'
                 if step_state_changes:
                     for state_change in step_state_changes:
@@ -98,7 +98,7 @@ class OpenPI():
             for i, step in enumerate(steps):
                 step_state_changes = step['state_changes']
                 step_desc = step['description']
-                prompt += f'Step {i}: {step_desc}\n\n'
+                prompt += f'Step {i+1}: {step_desc}\n\n'
                 prompt += f'Entity status changes:\n'
                 preds = self.run_llm(prompt)
                 # TODO: Append generation result to prompt as context
