@@ -8,7 +8,6 @@ from tqdm import tqdm
 from datasets import load_dataset
 from sklearn.metrics import accuracy_score
 
-openai.api_key_path = '../../_private/{args.key}.key'
 logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
 random.seed(29)
 
@@ -59,6 +58,7 @@ class OpenPI():
             "davinci": "text-davinci-002",
             "curie": "text-curie-001",
             "codex": "codex-davinci-002",
+            "ada": "text-ada-001"
         }
         while True:
             try:
@@ -95,12 +95,16 @@ class OpenPI():
             prompt += f'Goal: {goal}\n\n'
             steps = example['steps']
             gold = [[] for _ in range(len(steps))]
+            pred = []
             for i, step in enumerate(steps):
                 step_state_changes = step['state_changes']
                 step_desc = step['description']
                 prompt += f'Step {i}: {step_desc}\n\n'
                 prompt += f'Entity status changes:\n'
-                preds = self.run_llm(prompt)
+                llm_pred = self.run_llm(prompt, args.model, stop='\n\n')
+                llm_pred = utils.parse_preds(llm_pred)
+                pred.append(llm_pred)
+                
                 # TODO: Append generation result to prompt as context
                 if step_state_changes:
                     for state_change in step_state_changes:
@@ -115,14 +119,12 @@ class OpenPI():
                             post = utils.choose_openpi_options(post)
                         gold[i].append(f'The {attr} of {entity} is {pre} before and {post} afterwards.')
             golds.append(gold)
-            print(golds)
-            raise SystemExit()
-            # preds.append(pred)
-        
-        # with open(f'pred_{self.idx}.txt', 'w') as f:
-        #     f.writelines([x + '\n' for x in preds])
-        # with open(f'gold_{self.idx}.txt', 'w') as f:
-        #     f.writelines([x + '\n' for x in golds])
+            preds.append(pred)
+
+        with open(f'pred_{self.idx}.txt', 'w') as f:
+            f.writelines([x + '\n' for x in preds])
+        with open(f'gold_{self.idx}.txt', 'w') as f:
+            f.writelines([x + '\n' for x in golds])
     
     def evaluate(self):
         with open(f'pred_{self.idx}.txt', 'r') as f:
@@ -144,9 +146,10 @@ parser.add_argument('--key', type=str, help='The name of the OpenAI API key file
 
 if __name__ == '__main__':
     args = parser.parse_args()
+    openai.api_key_path = f'../../_private/{args.key}.key'
 
     data_name = 'anli'
-    NUM_EXAMPLES_IN_PROMPT = 5
+    NUM_EXAMPLES_IN_PROMPT = 2
 
     meta_data = utils.load_meta_data(args.data_path)
 
