@@ -32,3 +32,12 @@ def choose_openpi_options(openpi_object):
     openpi_choices = openpi_object.split('|')
     openpi_object = openpi_choices[0].strip()
     return openpi_object
+
+
+def parse_preds(preds):
+    preds = preds.split('\n')
+    preds_parsed = []
+    for pred in preds:
+        if pred[0] == '-':
+            preds_parsed.append(pred.replace('-', '').strip())
+    return preds_parsed
