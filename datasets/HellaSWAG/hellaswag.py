@@ -7,6 +7,7 @@ import random
 from promptsource.templates import DatasetTemplates
 import time
 from sklearn.metrics import accuracy_score
+import pickle
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--prompt', required=True, type=str, help='Either text or code.')
@@ -36,8 +37,14 @@ def predict():
             #print(text_prompt)
         return(text_prompt)
 
-    def build_code_prompt():
+    def build_code_prompt(code_ver):
         code_prompt = ""
+        with open(code_ver + '.py') as f:
+            template = f.read()
+        example_indices = random.sample(range(len(dataset['train'])), NUM_EXAMPLES_IN_PROMPT)
+        for example_index in example_indices:
+            example = dataset['train'][example_index]
+            code_prompt += template.replace("{ctx}", example["ctx"]).replace("{ending0}", example["endings"][0]).replace("{ending1}", example["endings"][1]).replace("{ending2}", example["endings"][2]).replace("{ending3}", example["endings"][3]).replace("{label}", example["label"]) + '\n\n'
         return code_prompt
 
     def run_llm(prompt, model, temperature=0, stop=['\n']):
@@ -71,19 +78,23 @@ def predict():
 
     if args.prompt == "text":
         prompt = build_text_prompt()
-    elif args.prompt == "code":
-        prompt = build_code_prompt()
+    elif "code" in args.prompt:
+        prompt = build_code_prompt(args.prompt)
     #print(prompt)
+    #raise SystemExit()
     preds = []
     golds = []
     print("Total examples: ", len(dataset['test']))
     count = 0
-    for example in dataset['validation']:
+    with open("sampled_1000_indices.pkl", "rb") as f:
+        indices = pickle.load(f)
+    for index in indices:
+        example = dataset['validation'][index]
         count += 1
         print(count)
         input_text, output_text = template.apply(example)
         pred = run_llm(prompt + input_text + '\n\nAnswer: Ending', args.model)
-        gold = example['label']
+        gold = str(int(example['label']) + 1)
         preds.append(pred)
         golds.append(gold)
 
