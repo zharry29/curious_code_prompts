@@ -2,10 +2,13 @@ import argparse
 import openai
 from datasets import load_dataset
 import random
+import pickle
 random.seed(29)
 from promptsource.templates import DatasetTemplates
 import time
 from sklearn.metrics import accuracy_score
+from transformers import AutoTokenizer
+from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--prompt', required=True, type=str, help='Either text or code.')
@@ -15,24 +18,43 @@ parser.add_argument('--key', required=True, type=str, help='The name of the Open
 args = parser.parse_args()
 openai.api_key = open(f'../../_private/{args.key}.key').read()
 
-NUM_EXAMPLES_IN_PROMPT = 5
 SELECTED_PROMPT_NAME = "Questions with Context +unanswerable"
+MAX_RESPONSE_TOKENS = 300
 
 template = DatasetTemplates("squad_v2")[SELECTED_PROMPT_NAME]
-dataset = load_dataset("squad_v2")
+dataset = load_dataset("squad_v2", cache_dir="/nlp/data/huggingface_cache")
+tokenizer = AutoTokenizer.from_pretrained("gpt2")
+
+def get_max_len(model):
+    if model == "davinci":
+        return 4000
+    elif model == "curie" or model == "ada" or model == "babbage":
+        return 2048
+    elif model == "codex":
+        return 8000
+    
 
 def predict():
     # Build prompt
-    def build_text_prompt():
+    def build_text_prompt(model, input_text):
+        len_input = len(tokenizer(input_text)['input_ids'])
         text_prompt = ""
-        example_indices = random.sample(range(len(dataset['train'])), NUM_EXAMPLES_IN_PROMPT)
-        for example_index in example_indices:
-            example = dataset['train'][example_index]
+        max_len = get_max_len(model) - MAX_RESPONSE_TOKENS - len_input
+        sampled_indices = []
+        while True:
+            index = random.choice(range(len(dataset['train'])))
+            while index in sampled_indices:
+                index = random.choice(range(len(dataset['train'])))
+            sampled_indices.append(index)
+            example = dataset['train'][index]
             input_text, output_text = template.apply(example)
-            text_prompt += input_text + ' ' + output_text + '\n\n'
-        return(text_prompt)
+            new_prompt = text_prompt + input_text + ' ' + output_text + '\n\n'
+            if len(tokenizer(new_prompt)['input_ids']) > max_len:
+                break
+            text_prompt = new_prompt
+        return text_prompt, sampled_indices
 
-    def build_code_prompt():
+    def build_code_prompt(model, input_text):
         code_prompt = ""
         return code_prompt
 
@@ -41,7 +63,7 @@ def predict():
             "davinci": "text-davinci-002",
             "curie": "text-curie-001",
             "ada": "text-ada-001",
-            "codex": "codex-davinci-002",
+            "codex": "code-davinci-002",
         }
         while True:
             try:
@@ -49,7 +71,7 @@ def predict():
                     engine=model_name[model],
                     prompt=prompt,
                     temperature=temperature,
-                    max_tokens=300,
+                    max_tokens=MAX_RESPONSE_TOKENS,
                     top_p=1,
                     frequency_penalty=0,
                     presence_penalty=0,
@@ -64,30 +86,34 @@ def predict():
         gen_text = ret["choices"][0]["text"].strip()#.split('\n')[0]
         return gen_text
 
-
-    if args.prompt == "text":
-        prompt = build_text_prompt()
-    elif args.prompt == "code":
-        prompt = build_code_prompt()
-    #print(prompt)
     preds = []
     golds = []
-    #print("Total examples: ", len(dataset['validation']))
-    count = 0
-    for example in dataset['validation']:
-        count += 1
-        # if count > 20:
-        #     break
+    full_indices = []
+    f = open("sampled_1000_indices.txt", "r")
+    example_indices = [int(s.strip()) for s in f.readlines()]
+
+    for index in tqdm(example_indices):
+        example = dataset['validation'][index]
+
         input_text, output_text = template.apply(example)
+
+        if args.prompt == "text":
+            prompt, indices = build_text_prompt(args.model, input_text)
+        elif args.prompt == "code":
+            prompt = build_code_prompt(args.model, input_text)
+        
         pred = run_llm(prompt + input_text, args.model)
         gold = example["answers"]["text"]
         preds.append(pred if normalize_text(pred) != 'unanswerable' else '')
         golds.append(gold if len(gold) > 0 else [''])
+        full_indices.append(indices)
 
-    with open('pred.txt', 'w') as f:
+    with open(f'pred-{args.model}.txt', 'w') as f:
         f.writelines([str(x) + '\n' for x in preds])
-    with open('gold.txt', 'w') as f:
+    with open(f'gold-{args.model}.txt', 'w') as f:
         f.writelines([str(x) + '\n' for x in golds])
+    with open(f'indices-{args.model}.txt', 'w') as f:
+        f.writelines([str(x) + '\n' for x in full_indices])
 
 def normalize_text(s):
     """Removing articles and punctuation, and standardizing whitespace are all typical text processing steps."""
@@ -132,9 +158,9 @@ def compute_f1(prediction, truth):
     return 2 * (prec * rec) / (prec + rec)
 
 def evaluate():
-    with open('pred.txt', 'r') as f:
+    with open(f'pred-{args.model}.txt', 'r') as f:
         preds = [x.strip() for x in f.readlines()]
-    with open('gold.txt', 'r') as f:
+    with open(f'gold-{args.model}.txt', 'r') as f:
         golds = [eval(x.strip()) for x in f.readlines()]
     em_scores = []
     f1_scores = []
