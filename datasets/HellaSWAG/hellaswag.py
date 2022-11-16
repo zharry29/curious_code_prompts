@@ -52,7 +52,7 @@ def predict():
             "davinci": "text-davinci-002",
             "curie": "text-curie-001",
             "ada": "text-ada-001",
-            "codex": "codex-davinci-002",
+            "codex": "code-davinci-002",
         }
         while True:
             try:
@@ -60,7 +60,7 @@ def predict():
                     engine=model_name[model],
                     prompt=prompt,
                     temperature=temperature,
-                    max_tokens=300,
+                    max_tokens=5,
                     top_p=1,
                     frequency_penalty=0,
                     presence_penalty=0,
@@ -84,7 +84,7 @@ def predict():
     #raise SystemExit()
     preds = []
     golds = []
-    print("Total examples: ", len(dataset['test']))
+    #print("Total examples: ", len(dataset['test']))
     count = 0
     with open("sampled_1000_indices.pkl", "rb") as f:
         indices = pickle.load(f)
@@ -98,13 +98,13 @@ def predict():
         preds.append(pred)
         golds.append(gold)
 
-    with open('pred.txt', 'w') as f:
+    with open(f'pred_{args.model}_{args.prompt}.txt', 'w') as f:
         f.writelines([x + '\n' for x in preds])
     with open('gold.txt', 'w') as f:
         f.writelines([x + '\n' for x in golds])
 
 def evaluate():
-    with open('pred.txt', 'r') as f:
+    with open(f'pred_{args.model}_{args.prompt}.txt', 'r') as f:
         preds = [x.strip() for x in f.readlines()]
     with open('gold.txt', 'r') as f:
         golds = [x.strip() for x in f.readlines()]
