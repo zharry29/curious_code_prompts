@@ -9,19 +9,17 @@ import time
 from sklearn.metrics import accuracy_score
 import csv
 import pickle
+from transformers import AutoTokenizer
+tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--prompt', required=True, type=str, help='Either text or code.')
 parser.add_argument('--model', required=True, type=str, help='Either davinci, curie or codex.')
-#parser.add_argument('--dataset', type=str, help='Name of the datasset')
-#parser.add_argument('--xxx', action='store_true', help='')
+parser.add_argument('--max_prompt', type=int, help='Maximum number of tokens in the prompt.')
 parser.add_argument('--key', required=True, type=str, help='The name of the OpenAI API key file.')
 
 args = parser.parse_args()
 openai.api_key = open(f'../../_private/{args.key}.key').read()
-
-NUM_EXAMPLES_IN_PROMPT = 5
-#SELECTED_PROMPT_NAME = "how_ends"
 
 def load_data():
     dataset = {'train': [], 'test': []}
@@ -41,15 +39,19 @@ def apply_template(example):
 
 def predict():
     # Build prompt
-    def build_text_prompt():
+    def build_text_prompt(inference_input_text):
         text_prompt = ""
-        example_indices = random.sample(range(len(dataset['train'])), NUM_EXAMPLES_IN_PROMPT)
+        prev_prompt = ""
+        example_indices = random.sample(range(len(dataset['train'])), 100)
         for example_index in example_indices:
+            if len(tokenizer(text_prompt + inference_input_text)['input_ids']) > args.max_prompt - 20:
+                break
             example = dataset['train'][example_index]
             input_text, output_text = apply_template(example)
+            prev_prompt = text_prompt
             text_prompt += input_text + ' ' + output_text + '\n\n'
-            #print(text_prompt)
-        return(text_prompt)
+
+        return(prev_prompt + inference_input_text)
 
     def build_code_prompt():
         code_prompt = ""
@@ -68,7 +70,7 @@ def predict():
                     engine=model_name[model],
                     prompt=prompt,
                     temperature=temperature,
-                    max_tokens=300,
+                    max_tokens=20,
                     top_p=1,
                     frequency_penalty=0,
                     presence_penalty=0,
@@ -83,11 +85,6 @@ def predict():
         gen_text = ret["choices"][0]["text"].strip()#.split('\n')[0]
         return gen_text
 
-
-    if args.prompt == "text":
-        prompt = build_text_prompt()
-    elif args.prompt == "code":
-        prompt = build_code_prompt()
     preds = []
     golds = []
     print("Total examples: ", len(dataset['test']))
@@ -99,9 +96,14 @@ def predict():
         count += 1
         print(count)
         input_text, output_text = apply_template(example)
-        pred_text = run_llm(prompt + input_text, args.model)
-        #print(prompt + input_text)
-        #raise SystemExit()
+        if args.prompt == "text":
+            prompt = build_text_prompt(input_text)
+        elif "code" in args.prompt:
+            prompt = build_code_prompt(args.prompt, input_text)
+        pred_text = run_llm(prompt, args.model)
+        #print(prompt)
+        #print(len(tokenizer(prompt)['input_ids']))
+        #raise SystemExit
         if '(b)' in pred_text:
             pred = 1
         elif '(c)' in pred_text:

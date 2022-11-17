@@ -1,3 +1,5 @@
+import get_most_likely_ending_index
+
 class Passage:
     def __init__(self, context, possible_endings):
         self.context = context
