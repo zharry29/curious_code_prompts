@@ -7,6 +7,6 @@ class Review:
     def get_rating(self):
         # The star rating the user gave
         return get_star_rating_from_text_review(self.review)
-%%%
-review{x} = Review(review = "{text}")
-assert(review0.get_rating == {label})
+
+review = Review(review = "{text}")
+assert(review.get_rating == {label})

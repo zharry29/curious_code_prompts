@@ -8,8 +8,8 @@ class Passage:
     def best_ending(self):
         # Choose the most likely ending to the context
         return get_most_likely_ending_index(self.context, self.possible_endings)
-%%%
-passage{x} = Passage(
+
+passage = Passage(
     context = "{ctx}"
     possible_endings = [
             "{ending0}",
@@ -18,4 +18,4 @@ passage{x} = Passage(
             "{ending3}"
         ]
 )
-assert(passage0.best_ending == {label})
+assert(passage.best_ending == {label})

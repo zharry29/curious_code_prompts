@@ -7,6 +7,6 @@ class Review:
     def get_sentiment(self):
         # Whether the review is positive or negative
         return get_sentiment_from_text_review(self.review)
-%%%
-review{x} = Review(review = "{text}")
-assert(review0.get_sentiment == {label})
+
+review = Review(review = "{text}")
+assert(review.get_sentiment == {label})

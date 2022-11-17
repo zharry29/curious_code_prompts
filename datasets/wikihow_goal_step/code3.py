@@ -14,11 +14,11 @@ class Event:
         # Output the correct goal that the step is trying to accomplish
         return find_goal(self.step, [self.goal0, self.goal1, self.goal2, self.goal3])
 
-event{x} = Event(
+event = Event(
     step = "{step}",
     goal0 = "{goal0}",
     goal1 = "{goal1}",
     goal2 = "{goal2}",
     goal3 = "{goal3}"
 )
-assert(event{x}.get_goal_from_step == goal{label})
+assert(event.get_goal_from_step == goal{label})
