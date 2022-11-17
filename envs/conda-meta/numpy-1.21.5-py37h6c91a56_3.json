@@ -1,0 +1,42 @@
+{
+  "build": "py37h6c91a56_3",
+  "build_number": 3,
+  "channel": "https://repo.anaconda.com/pkgs/main/linux-64",
+  "constrains": [],
+  "depends": [
+    "blas 1.0 mkl",
+    "libgcc-ng >=11.2.0",
+    "libstdcxx-ng >=11.2.0",
+    "mkl >=2021.4.0,<2022.0a0",
+    "mkl-service >=2.3.0,<3.0a0",
+    "mkl_fft",
+    "mkl_random",
+    "numpy-base 1.21.5 py37ha15fc14_3",
+    "python >=3.7,<3.8.0a0"
+  ],
+  "extracted_package_dir": "/nlp/data/lyuqing-zharry/dialog_script/.conda/pkgs/numpy-1.21.5-py37h6c91a56_3",
+  "features": "",
+  "files": [],
+  "fn": "numpy-1.21.5-py37h6c91a56_3.conda",
+  "legacy_bz2_md5": "9334d08dd55f994b6b2c07dc236c1c63",
+  "license": "BSD-3-Clause",
+  "link": {
+    "source": "/nlp/data/lyuqing-zharry/dialog_script/.conda/pkgs/numpy-1.21.5-py37h6c91a56_3",
+    "type": 1
+  },
+  "md5": "343ce82eed48d2fe2401feacb941617e",
+  "name": "numpy",
+  "package_tarball_full_path": "/nlp/data/lyuqing-zharry/dialog_script/.conda/pkgs/numpy-1.21.5-py37h6c91a56_3.conda",
+  "paths_data": {
+    "paths": [],
+    "paths_version": 1
+  },
+  "requested_spec": "None",
+  "sha256": "654152c72eb4651e20e766fd2d3cebf12705f16ca0d66c2c27ab4ec37fed8e15",
+  "size": 10014,
+  "subdir": "linux-64",
+  "timestamp": 1653917887949,
+  "track_features": "",
+  "url": "https://repo.anaconda.com/pkgs/main/linux-64/numpy-1.21.5-py37h6c91a56_3.conda",
+  "version": "1.21.5"
+}
