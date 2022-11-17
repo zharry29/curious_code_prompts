@@ -1,5 +1,5 @@
 """Given a context and 4 different endings, output the most likely ending"""
-
+%%%
 # The context
 context = "{ctx}" 
 # The 4 endings

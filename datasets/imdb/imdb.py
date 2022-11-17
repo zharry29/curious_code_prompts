@@ -1,5 +1,4 @@
 import argparse
-from ast import main
 import openai
 from datasets import load_dataset
 import random
@@ -12,10 +11,10 @@ from transformers import AutoTokenizer
 tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--prompt', required=True, type=str, help='Either text or code.')
-parser.add_argument('--model', required=True, type=str, help='Either davinci, curie or codex.')
-parser.add_argument('--max_prompt', type=int, help='Maximum number of tokens in the prompt.')
-parser.add_argument('--key', required=True, type=str, help='The name of the OpenAI API key file.')
+parser.add_argument('--prompt', default='text', type=str, help='Either text or code.')
+parser.add_argument('--model', default='codex', type=str, help='Either davinci, curie or codex.')
+parser.add_argument('--max_prompt', type=int, default=4000, help='Maximum number of tokens in the prompt.')
+parser.add_argument('--key', default='harry', type=str, help='The name of the OpenAI API key file.')
 
 args = parser.parse_args()
 openai.api_key = open(f'../../_private/{args.key}.key').read()
@@ -84,6 +83,8 @@ def predict():
         indices = pickle.load(f)
     for index in indices:
         example = dataset['test'][index]
+        #print(example)
+        #raise SystemExit
         count += 1
         print(count)
         input_text, output_text = template.apply(example)

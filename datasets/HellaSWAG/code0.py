@@ -1,6 +1,7 @@
+instructions = "Given a context and 4 different endings, output the most likely ending"
 input = "{ctx}"
-ending0 = "{ending0}"
-ending1 = "{ending1}"
-ending2 = "{ending2}"
-ending3 = "{ending3}"
+option0 = "{ending0}"
+option1 = "{ending1}"
+option2 = "{ending2}"
+option3 = "{ending3}"
 label = {label}
