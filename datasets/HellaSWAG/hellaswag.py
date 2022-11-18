@@ -1,5 +1,4 @@
 import argparse
-from ast import main
 import openai
 from datasets import load_dataset
 import random
