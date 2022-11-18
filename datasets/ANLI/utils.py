@@ -1,10 +1,7 @@
 import os
-import logging
 from datasets import load_dataset
 from promptsource.templates import DatasetTemplates
 from promptsource.templates import TemplateCollection
-
-logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
 
 
 def check_subset(dataset):
@@ -39,7 +36,6 @@ def check_prompt_number(prompt_names, dataset):
 
     
 def load_data(data_name):
-    logging.info(f'Retrieving subsets of {data_name}...')
     SELECTED_SUBSET_NAME = check_subset(data_name)
 
     if SELECTED_SUBSET_NAME:

@@ -1,15 +1,12 @@
+import re
 import time
 import utils
 import random
 import openai
-import logging
 import argparse
 from tqdm import tqdm
 from datasets import load_dataset
 from sklearn.metrics import accuracy_score
-
-logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
-random.seed(29)
 
 
 class OpenPI():
@@ -88,36 +85,44 @@ class OpenPI():
         elif args.prompt == "code":
             prompt = self.build_code_prompt()
 
+
         preds = []
         golds = []
-        for example in tqdm(val_data.values()):
+        for example in tqdm(val_data.values(), position=0, leave=False):
             goal = example['goal']
-            prompt += f'Goal: {goal}\n\n'
+            cur_prompt = prompt + f'Goal: {goal}\n\n'
             steps = example['steps']
             gold = [[] for _ in range(len(steps))]
-            pred = []
-            for i, step in enumerate(steps):
+            pred = [[] for _ in range(len(steps))]
+            for i, step in enumerate(tqdm(steps, position=1, leave=False)):
                 step_state_changes = step['state_changes']
                 step_desc = step['description']
-                prompt += f'Step {i+1}: {step_desc}\n\n'
-                prompt += f'Entity status changes:\n'
-                llm_pred = self.run_llm(prompt, args.model, stop='\n\n')
+                cur_prompt += f'Step {i+1}: {step_desc}\n\n'
+                cur_prompt += f'Entity status changes:\n'
+                llm_pred = self.run_llm(cur_prompt, args.model, stop='\n\n')
                 llm_pred = utils.parse_preds(llm_pred)
+                for line in llm_pred:
+                    print(line)
+                    entries = re.match(r'The (.*) is (.*) before and (.*) afterwards.', line)
+                    print((entries.group(1), entries.group(2), entries.group(3)))
+                    cur_prompt += '- ' + line.strip() + '\n'
+                cur_prompt += '\n'
                 pred.append(llm_pred)
                 
-                # TODO: Append generation result to prompt as context
+                state_change_lst = []
                 if step_state_changes:
                     for state_change in step_state_changes:
                         entity, attr, pre, post = state_change
-                        if '|' in entity:
-                            entity = utils.choose_openpi_options(entity)
-                        if '|' in attr:
-                            attr = utils.choose_openpi_options(attr)
-                        if '|' in pre:
-                            pre = utils.choose_openpi_options(pre)
-                        if '|' in post:
-                            post = utils.choose_openpi_options(post)
-                        gold[i].append(f'The {attr} of {entity} is {pre} before and {post} afterwards.')
+                        entity, attr, pre, post = entity.split('|'), attr.split('|'), pre.split('|'), post.split('|')
+                        for e in entity:
+                            for a in attr:
+                                for pr in pre:
+                                    for po in post:
+                                        state_change_lst.append(f'The {a.strip()} of {e.strip()} is {pr.strip} before and {po.strip()} afterwards.')
+                
+                print(pred)
+                print(gold)
+                raise SystemExit()
             golds.append(gold)
             preds.append(pred)
 
