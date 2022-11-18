@@ -18,4 +18,4 @@ passage = Passage(
             "{ending3}"
         ]
 )
-assert(passage.best_ending == {label})
+assert(passage.best_ending ==$ {label})

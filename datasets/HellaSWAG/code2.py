@@ -8,4 +8,4 @@ ending1 = "{ending1}"
 ending2 = "{ending2}"
 ending3 = "{ending3}"
 # The most likely ending to the context
-correct_ending = ending{label}
+correct_ending = ending${label}

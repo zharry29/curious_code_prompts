@@ -4,4 +4,4 @@ option0 = "{ending0}"
 option1 = "{ending1}"
 option2 = "{ending2}"
 option3 = "{ending3}"
-label = {label}
+label =$ {label}

@@ -19,15 +19,28 @@ parser.add_argument('--key', required=True, type=str, help='The name of the Open
 args = parser.parse_args()
 openai.api_key = open(f'../../_private/{args.key}.key').read()
 
-# NUM_EXAMPLES_IN_PROMPT = 5
 SELECTED_PROMPT_NAME = "how_ends"
 
 template = DatasetTemplates('hellaswag')[SELECTED_PROMPT_NAME]
 dataset = load_dataset("hellaswag")
 
+def apply_code_template(example):
+    with open(args.prompt + '.py') as f:
+        template = f.read()
+    ret = []
+    for t in template.split('$'):
+        ret.append(t.replace("{ctx}", example["ctx"]).replace("{ending0}", example["endings"][0]).replace("{ending1}", example["endings"][1]).replace("{ending2}", example["endings"][2]).replace("{ending3}", example["endings"][3]).replace("{label}", example["label"]))
+    return ret
+
+if args.prompt == "text":
+    apply_template = template.apply
+elif args.prompt.startswith("code"):
+    apply_template = apply_code_template
+
 def predict():
     # Build prompt
-    def build_text_prompt(inference_input_text):
+    def build_text_prompt(example):
+        inference_input_text = apply_template(example)[0]
         text_prompt = ""
         prev_prompt = ""
         example_indices = random.sample(range(len(dataset['train'])), 100)
@@ -35,21 +48,24 @@ def predict():
             if len(tokenizer(text_prompt + inference_input_text + '\n\nAnswer: Ending')['input_ids']) > args.max_prompt:
                 break
             example = dataset['train'][example_index]
-            input_text, output_text = template.apply(example)
+            input_text, output_text = apply_template(example)
             prev_prompt = text_prompt
             text_prompt += input_text + '\n\nAnswer: ' + output_text + '\n\n\n'
-
         return(prev_prompt + inference_input_text + '\n\nAnswer: Ending')
-
-    def build_code_prompt(code_ver):
-        code_prompt = ""
-        with open(code_ver + '.py') as f:
-            template = f.read()
-        example_indices = random.sample(range(len(dataset['train'])), NUM_EXAMPLES_IN_PROMPT)
+        
+    def build_code_prompt(example):
+        inference_input_text = apply_template(example)[0]
+        text_prompt = ""
+        prev_prompt = ""
+        example_indices = random.sample(range(len(dataset['train'])), 100)
         for example_index in example_indices:
+            if len(tokenizer(text_prompt + inference_input_text)['input_ids']) > args.max_prompt:
+                break
             example = dataset['train'][example_index]
-            code_prompt += template.replace("{ctx}", example["ctx"]).replace("{ending0}", example["endings"][0]).replace("{ending1}", example["endings"][1]).replace("{ending2}", example["endings"][2]).replace("{ending3}", example["endings"][3]).replace("{label}", example["label"]) + '\n\n'
-        return code_prompt
+            input_text, output_text = apply_template(example)
+            prev_prompt = text_prompt
+            text_prompt += input_text + output_text + '\n\n\n'
+        return(prev_prompt + inference_input_text)
 
     def run_llm(prompt, model, temperature=0, stop=['\n']):
         model_name = {
@@ -64,7 +80,7 @@ def predict():
                     engine=model_name[model],
                     prompt=prompt,
                     temperature=temperature,
-                    max_tokens=1,
+                    max_tokens=2,
                     top_p=1,
                     frequency_penalty=0,
                     presence_penalty=0,
@@ -85,20 +101,22 @@ def predict():
     count = 0
     with open("sampled_1000_indices.pkl", "rb") as f:
         indices = pickle.load(f)
-    for index in indices:
+    for index in indices[:5]:
         example = dataset['validation'][index]
         count += 1
         print(count)
-        input_text, output_text = template.apply(example)
         if args.prompt == "text":
-            prompt = build_text_prompt(input_text)
+            prompt = build_text_prompt(example)
         elif "code" in args.prompt:
-            prompt = build_code_prompt(args.prompt, input_text)
+            prompt = build_code_prompt(example)
         #print(prompt)
         #print(len(tokenizer(prompt)['input_ids']))
-        #raise SystemExit()
         pred = run_llm(prompt, args.model)
-        gold = str(int(example['label']) + 1)
+        if args.prompt == "text":
+            pred = str(int(pred) - 1)
+        #print(pred)
+        #raise SystemExit()
+        gold = str(int(example['label']))
         preds.append(pred)
         golds.append(gold)
 
