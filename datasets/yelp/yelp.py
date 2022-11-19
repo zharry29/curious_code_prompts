@@ -32,7 +32,7 @@ def predict():
         prev_prompt = ""
         example_indices = random.sample(range(len(dataset['train'])), 100)
         for example_index in example_indices:
-            if len(tokenizer(text_prompt + inference_input_text)['input_ids']) > args.max_prompt:
+            if len(tokenizer(text_prompt + inference_input_text)['input_ids']) > args.max_prompt - 5:
                 break
             example = dataset['train'][example_index]
             input_text, output_text = template.apply(example)
@@ -101,13 +101,13 @@ def predict():
         preds.append(pred)
         golds.append(gold)
 
-    with open(f'pred_{args.model}_{args.prompt}.txt', 'w') as f:
+    with open(f'pred_{args.model}_{args.prompt}_{args.max_prompt}.txt', 'w') as f:
         f.writelines([str(x) + '\n' for x in preds])
     with open('gold.txt', 'w') as f:
         f.writelines([str(x) + '\n' for x in golds])
 
 def evaluate():
-    with open(f'pred_{args.model}_{args.prompt}.txt', 'r') as f:
+    with open(f'pred_{args.model}_{args.prompt}_{args.max_prompt}.txt', 'r') as f:
         preds = [int(l.strip()) for l in f.readlines()]
     with open('gold.txt', 'r') as f:
         golds = [int(l.strip()) + 1 for l in f.readlines()]

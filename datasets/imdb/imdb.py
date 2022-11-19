@@ -2,7 +2,7 @@ import argparse
 import openai
 from datasets import load_dataset
 import random
-#random.seed(29)
+random.seed(29)
 from promptsource.templates import DatasetTemplates
 import time
 from sklearn.metrics import accuracy_score
@@ -31,7 +31,7 @@ def predict():
         prev_prompt = ""
         example_indices = random.sample(range(len(dataset['train'])), 100)
         for example_index in example_indices:
-            if len(tokenizer(text_prompt + inference_input_text)['input_ids']) > args.max_prompt:
+            if len(tokenizer(text_prompt + inference_input_text)['input_ids']) > args.max_prompt - 5:
                 break
             example = dataset['train'][example_index]
             input_text, output_text = template.apply(example)
@@ -57,7 +57,7 @@ def predict():
                     engine=model_name[model],
                     prompt=prompt,
                     temperature=temperature,
-                    max_tokens=1,
+                    max_tokens=5,
                     top_p=1,
                     frequency_penalty=0,
                     presence_penalty=0,
@@ -94,8 +94,9 @@ def predict():
             prompt = build_code_prompt(args.prompt, input_text)
         #print(prompt)
         #print(len(tokenizer(prompt)['input_ids']))
-        #raise SystemExit
         pred_text = run_llm(prompt, args.model)
+        #print(pred_text)
+        #raise SystemExit
         if "negative" in pred_text:
             pred = 0
         else:
@@ -104,13 +105,13 @@ def predict():
         preds.append(pred)
         golds.append(gold)
 
-    with open(f'pred_{args.model}_{args.prompt}.txt', 'w') as f:
+    with open(f'pred_{args.model}_{args.prompt}_{args.max_prompt}.txt', 'w') as f:
         f.writelines([str(x) + '\n' for x in preds])
     with open('gold.txt', 'w') as f:
         f.writelines([str(x) + '\n' for x in golds])
 
 def evaluate():
-    with open(f'pred_{args.model}_{args.prompt}.txt', 'r') as f:
+    with open(f'pred_{args.model}_{args.prompt}_{args.max_prompt}.txt', 'r') as f:
         preds = [x.strip() for x in f.readlines()]
     with open('gold.txt', 'r') as f:
         golds = [x.strip() for x in f.readlines()]

@@ -101,6 +101,7 @@ def predict():
             prompt = build_code_prompt(args.prompt, input_text)
         pred_text = run_llm(prompt, args.model)
         #print(prompt)
+        #print(pred_text)
         #print(len(tokenizer(prompt)['input_ids']))
         #raise SystemExit
         if '(b)' in pred_text:
@@ -111,13 +112,13 @@ def predict():
         preds.append(pred)
         golds.append(gold)
 
-    with open(f'pred_{args.model}_{args.prompt}.txt', 'w') as f:
+    with open(f'pred_{args.model}_{args.prompt}_{args.max_prompt}.txt', 'w') as f:
         f.writelines([str(x) + '\n' for x in preds])
     with open('gold.txt', 'w') as f:
         f.writelines([str(x) + '\n' for x in golds])
 
 def evaluate():
-    with open(f'pred_{args.model}_{args.prompt}.txt', 'r') as f:
+    with open(f'pred_{args.model}_{args.prompt}_{args.max_prompt}.txt', 'r') as f:
         preds = [x.strip() for x in f.readlines()]
     with open('gold.txt', 'r') as f:
         golds = [x.strip() for x in f.readlines()]

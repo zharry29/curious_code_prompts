@@ -45,7 +45,7 @@ def predict():
         prev_prompt = ""
         example_indices = random.sample(range(len(dataset['train'])), 100)
         for example_index in example_indices:
-            if len(tokenizer(text_prompt + inference_input_text + '\n\nAnswer: Ending')['input_ids']) > args.max_prompt:
+            if len(tokenizer(text_prompt + inference_input_text + '\n\nAnswer: Ending')['input_ids']) > args.max_prompt - 20:
                 break
             example = dataset['train'][example_index]
             input_text, output_text = apply_template(example)
@@ -101,7 +101,7 @@ def predict():
     count = 0
     with open("sampled_1000_indices.pkl", "rb") as f:
         indices = pickle.load(f)
-    for index in indices[:5]:
+    for index in indices:
         example = dataset['validation'][index]
         count += 1
         print(count)
