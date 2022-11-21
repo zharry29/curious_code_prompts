@@ -9,6 +9,7 @@ from sklearn.metrics import accuracy_score
 import pickle
 from transformers import AutoTokenizer
 tokenizer = AutoTokenizer.from_pretrained("gpt2")
+from scipy.stats import pearsonr
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--prompt', default='text', type=str, help='Either text or code.')
@@ -24,25 +25,47 @@ SELECTED_PROMPT_NAME = "Movie Expressed Sentiment"
 template = DatasetTemplates('imdb')[SELECTED_PROMPT_NAME]
 dataset = load_dataset("imdb")
 
+def apply_code_template(example):
+    with open(args.prompt + '.py') as f:
+        template = f.read()
+    ret = []
+    for t in template.split('$'):
+        ret.append(t.replace("{text}", example["text"]).replace("{label}", '"positive"' if example["label"] == 1 else '"negative"'))
+    return ret
+
+if args.prompt == "text":
+    apply_template = template.apply
+elif args.prompt.startswith("code"):
+    apply_template = apply_code_template
 def predict():
     # Build prompt
-    def build_text_prompt(inference_input_text):
+    def build_text_prompt(example):
+        inference_input_text = apply_template(example)[0]
         text_prompt = ""
         prev_prompt = ""
         example_indices = random.sample(range(len(dataset['train'])), 100)
         for example_index in example_indices:
-            if len(tokenizer(text_prompt + inference_input_text)['input_ids']) > args.max_prompt - 5:
+            if len(tokenizer(text_prompt + inference_input_text)['input_ids']) > args.max_prompt - 20:
                 break
             example = dataset['train'][example_index]
-            input_text, output_text = template.apply(example)
+            input_text, output_text = apply_template(example)
             prev_prompt = text_prompt
             text_prompt += input_text + ' ' + output_text + '.\n\n'
-
         return(prev_prompt + inference_input_text)
 
-    def build_code_prompt():
-        code_prompt = ""
-        return code_prompt
+    def build_code_prompt(example):
+        inference_input_text = apply_template(example)[0]
+        text_prompt = ""
+        prev_prompt = ""
+        example_indices = random.sample(range(len(dataset['train'])), 100)
+        for example_index in example_indices:
+            if len(tokenizer(text_prompt + inference_input_text)['input_ids']) > args.max_prompt:
+                break
+            example = dataset['train'][example_index]
+            input_text, output_text = apply_template(example)
+            prev_prompt = text_prompt
+            text_prompt += input_text + output_text + '\n\n\n'
+        return(prev_prompt + inference_input_text)
 
     def run_llm(prompt, model, temperature=0, stop=['\n']):
         model_name = {
@@ -72,7 +95,6 @@ def predict():
         gen_text = ret["choices"][0]["text"].strip()#.split('\n')[0]
         return gen_text
 
-
     preds = []
     golds = []
     print("Total examples: ", len(dataset['test']))
@@ -81,7 +103,7 @@ def predict():
     #raise SystemExit
     with open("sampled_1000_indices.pkl", "rb") as f:
         indices = pickle.load(f)
-    for index in indices:
+    for index in indices[:10]:
         example = dataset['test'][index]
         #print(example)
         #raise SystemExit
@@ -89,14 +111,13 @@ def predict():
         print(count)
         input_text, output_text = template.apply(example)
         if args.prompt == "text":
-            prompt = build_text_prompt(input_text)
+            prompt = build_text_prompt(example)
         elif "code" in args.prompt:
-            prompt = build_code_prompt(args.prompt, input_text)
-        #print(prompt)
+            prompt = build_code_prompt(example)
         #print(len(tokenizer(prompt)['input_ids']))
+        print(prompt)
+        raise SystemExit
         pred_text = run_llm(prompt, args.model)
-        #print(pred_text)
-        #raise SystemExit
         if "negative" in pred_text:
             pred = 0
         else:

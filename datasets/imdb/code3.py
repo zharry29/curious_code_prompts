@@ -9,4 +9,4 @@ class Review:
         return get_sentiment_from_text_review(self.review)
 
 review = Review(review = "{text}")
-assert(review.get_sentiment == {label})
+assert(review.get_sentiment ==$ {label})

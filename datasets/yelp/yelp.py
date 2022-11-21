@@ -2,7 +2,7 @@ import argparse
 import openai
 from datasets import load_dataset
 import random
-#random.seed(29)
+random.seed(29)
 from promptsource.templates import DatasetTemplates
 import time
 from sklearn.metrics import accuracy_score
@@ -25,25 +25,47 @@ SELECTED_PROMPT_NAME = "based_on_that"
 template = DatasetTemplates('yelp_review_full')[SELECTED_PROMPT_NAME]
 dataset = load_dataset("yelp_review_full")
 
+def apply_code_template(example):
+    with open(args.prompt + '.py') as f:
+        template = f.read()
+    ret = []
+    for t in template.split('$'):
+        ret.append(t.replace("{text}", example["text"]).replace("{label}", str(example["label"])))
+    return ret
+
+if args.prompt == "text":
+    apply_template = template.apply
+elif args.prompt.startswith("code"):
+    apply_template = apply_code_template
 def predict():
     # Build prompt
-    def build_text_prompt(inference_input_text):
+    def build_text_prompt(example):
+        inference_input_text = apply_template(example)[0]
         text_prompt = ""
         prev_prompt = ""
         example_indices = random.sample(range(len(dataset['train'])), 100)
         for example_index in example_indices:
-            if len(tokenizer(text_prompt + inference_input_text)['input_ids']) > args.max_prompt - 5:
+            if len(tokenizer(text_prompt + inference_input_text)['input_ids']) > args.max_prompt - 20:
                 break
             example = dataset['train'][example_index]
-            input_text, output_text = template.apply(example)
+            input_text, output_text = apply_template(example)
             prev_prompt = text_prompt
             text_prompt += input_text + ' ' + output_text + '.\n\n'
-
         return(prev_prompt + inference_input_text)
 
-    def build_code_prompt():
-        code_prompt = ""
-        return code_prompt
+    def build_code_prompt(example):
+        inference_input_text = apply_template(example)[0]
+        text_prompt = ""
+        prev_prompt = ""
+        example_indices = random.sample(range(len(dataset['train'])), 100)
+        for example_index in example_indices:
+            if len(tokenizer(text_prompt + inference_input_text)['input_ids']) > args.max_prompt:
+                break
+            example = dataset['train'][example_index]
+            input_text, output_text = apply_template(example)
+            prev_prompt = text_prompt
+            text_prompt += input_text + output_text + '\n\n\n'
+        return(prev_prompt + inference_input_text)
 
     def run_llm(prompt, model, temperature=0, stop=['\n']):
         model_name = {
@@ -89,9 +111,9 @@ def predict():
         print(count)
         input_text, output_text = template.apply(example)
         if args.prompt == "text":
-            prompt = build_text_prompt(input_text)
+            prompt = build_text_prompt(example)
         elif "code" in args.prompt:
-            prompt = build_code_prompt(args.prompt, input_text)
+            prompt = build_code_prompt(example)
         #print(prompt)
         #print(len(tokenizer(prompt)['input_ids']))
         #raise SystemExit

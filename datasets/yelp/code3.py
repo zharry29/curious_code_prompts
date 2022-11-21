@@ -9,4 +9,4 @@ class Review:
         return get_star_rating_from_text_review(self.review)
 
 review = Review(review = "{text}")
-assert(review.get_rating == {label})
+assert(review.get_rating ==$ {label})
