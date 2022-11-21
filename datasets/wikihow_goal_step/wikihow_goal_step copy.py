@@ -2,7 +2,7 @@ import argparse
 import openai
 from datasets import load_dataset
 import random
-random.seed(29)
+#random.seed(29)
 from promptsource.templates import DatasetTemplates
 import time
 from sklearn.metrics import accuracy_score
@@ -12,10 +12,10 @@ from transformers import AutoTokenizer
 tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--prompt', default='text', type=str, help='Either text or code.')
-parser.add_argument('--model', default='codex', type=str, help='Either davinci, curie or codex.')
-parser.add_argument('--max_prompt', type=int, default=4000, help='Maximum number of tokens in the prompt.')
-parser.add_argument('--key', default='harry', type=str, help='The name of the OpenAI API key file.')
+parser.add_argument('--prompt', required=True, type=str, help='Either text or code.')
+parser.add_argument('--model', required=True, type=str, help='Either davinci, curie or codex.')
+parser.add_argument('--max_prompt', type=int, help='Maximum number of tokens in the prompt.')
+parser.add_argument('--key', required=True, type=str, help='The name of the OpenAI API key file.')
 
 args = parser.parse_args()
 openai.api_key = open(f'../../_private/{args.key}.key').read()
@@ -23,7 +23,7 @@ openai.api_key = open(f'../../_private/{args.key}.key').read()
 def load_data():
     dataset = {'train': [], 'test': []}
     for split in ['train', 'test']:
-        with open(f'order_{split}.csv', encoding = "ISO-8859-1") as f:
+        with open(f'goal_{split}.csv', encoding = "ISO-8859-1") as f:
             reader = csv.DictReader(f)
             for row in reader:
                 dataset[split].append(row)
@@ -31,27 +31,14 @@ def load_data():
 
 dataset = load_data()
 
-def apply_text_template(example):
-    input_prompt = f"You are trying to {example['goal'].lower()}. You need to do two things:\n(a) {example['step0'].strip('.')}\n(b) {example['step1'].strip('.')}\nThe first thing to do is"
-    output_prompt = ['(a) ' + example['step0'].strip('.'), '(b) ' + example['step1'].strip('.')][int(example["label"])]
+def apply_template(example):
+    input_prompt = f"Given an action: {example['step'].strip('.')}\nWhat is the most likely goal of that action?\n(a) {example['goal0']}\n(b) {example['goal1']}\n(c) {example['goal2']}\n(d) {example['goal3']}\nThe most likely goal is: "
+    output_prompt = ['(a)', '(b)', '(c)', '(d)'][int(example['label'])] + ' ' + example[f"goal{example['label']}"]
     return input_prompt, output_prompt
 
-def apply_code_template(example):
-    with open(args.prompt + '.py') as f:
-        template = f.read()
-    ret = []
-    for t in template.split('$'):
-        ret.append(t.replace("{step0}", example["step0"]).replace("{step1}", example["step1"]).replace("{goal}", example["goal"]).replace("{label_first}", str(example["label"])).replace("{label_after}", str(1-int(example["label"]))))
-    return ret
-if args.prompt == "text":
-    apply_template = apply_text_template
-elif args.prompt.startswith("code"):
-    apply_template = apply_code_template
-    
 def predict():
     # Build prompt
-    def build_text_prompt(example):
-        inference_input_text = apply_template(example)[0]
+    def build_text_prompt(inference_input_text):
         text_prompt = ""
         prev_prompt = ""
         example_indices = random.sample(range(len(dataset['train'])), 100)
@@ -65,19 +52,9 @@ def predict():
 
         return(prev_prompt + inference_input_text)
 
-    def build_code_prompt(example):
-        inference_input_text = apply_template(example)[0]
-        text_prompt = ""
-        prev_prompt = ""
-        example_indices = random.sample(range(len(dataset['train'])), 100)
-        for example_index in example_indices:
-            if len(tokenizer(text_prompt + inference_input_text)['input_ids']) > args.max_prompt:
-                break
-            example = dataset['train'][example_index]
-            input_text, output_text = apply_template(example)
-            prev_prompt = text_prompt
-            text_prompt += input_text + output_text + '\n\n\n'
-        return(prev_prompt + inference_input_text)
+    def build_code_prompt():
+        code_prompt = ""
+        return code_prompt
 
     def run_llm(prompt, model, temperature=0, stop=['\n']):
         model_name = {
@@ -117,26 +94,23 @@ def predict():
         example = dataset['test'][index]
         count += 1
         print(count)
+        input_text, output_text = apply_template(example)
         if args.prompt == "text":
-            prompt = build_text_prompt(example)
+            prompt = build_text_prompt(input_text)
         elif "code" in args.prompt:
-            prompt = build_code_prompt(example)
+            prompt = build_code_prompt(args.prompt, input_text)
         pred_text = run_llm(prompt, args.model)
         #print(prompt)
-        #print(pred_text)
         #print(len(tokenizer(prompt)['input_ids']))
-        if args.prompt == "text":
-            if '(b)' in pred_text:
-                pred = 1
-            else:
-                pred = 0
-        else:
-            if 'input1, input0' in pred_text:
-                pred = 1
-            else:
-                pred = 0
-        #print(pred)
         #raise SystemExit
+        if '(b)' in pred_text:
+            pred = 1
+        elif '(c)' in pred_text:
+            pred = 2
+        elif '(d)' in pred_text:
+            pred = 3
+        else:
+            pred = 0
         gold = int(example['label'])
         preds.append(pred)
         golds.append(gold)

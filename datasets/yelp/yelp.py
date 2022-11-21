@@ -109,7 +109,6 @@ def predict():
         #raise SystemExit
         count += 1
         print(count)
-        input_text, output_text = template.apply(example)
         if args.prompt == "text":
             prompt = build_text_prompt(example)
         elif "code" in args.prompt:

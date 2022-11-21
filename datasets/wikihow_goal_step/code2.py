@@ -8,4 +8,4 @@ goal1 = "{goal1}"
 goal2 = "{goal2}"
 goal3 = "{goal3}"
 # The correct goal of that step
-correct_goal_of_step = goal{label}
+correct_goal_of_step = goal${label}

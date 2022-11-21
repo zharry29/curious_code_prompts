@@ -15,4 +15,4 @@ event = Event(
     step0 = "{step0}"
     step1 = "{step1}"
 )
-assert(event.get_order_of_steps == [input{label_first}, input{label_after}])
+assert(event.get_order_of_steps == $[input{label_first}, input{label_after}])

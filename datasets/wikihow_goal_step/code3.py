@@ -21,4 +21,4 @@ event = Event(
     goal2 = "{goal2}",
     goal3 = "{goal3}"
 )
-assert(event.get_goal_from_step == goal{label})
+assert(event.get_goal_from_step == goal${label})

@@ -4,4 +4,4 @@ input1 = "{goal1}"
 input2 = "{goal2}"
 input3 = "{goal3}"
 input4 = "{step}"
-label = input{label}
+label = input${label}
