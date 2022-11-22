@@ -2,11 +2,9 @@ import argparse
 import openai
 from datasets import load_dataset
 import random
-import pickle
 random.seed(29)
 from promptsource.templates import DatasetTemplates
 import time
-from sklearn.metrics import accuracy_score
 from transformers import AutoTokenizer
 from tqdm import tqdm
 
