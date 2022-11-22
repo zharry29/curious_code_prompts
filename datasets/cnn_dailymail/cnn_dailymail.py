@@ -12,6 +12,7 @@ from rouge import FilesRouge
 parser = argparse.ArgumentParser()
 parser.add_argument('--prompt', required=True, type=str, help='Either text or code.')
 parser.add_argument('--model', required=True, type=str, help='Either davinci, curie or codex.')
+parser.add_argument('--max_prompt', type=int, default=4000, help='Maximum number of tokens in the prompt.')
 parser.add_argument('--key', required=True, type=str, help='The name of the OpenAI API key file.')
 
 args = parser.parse_args()
@@ -25,20 +26,12 @@ template = DatasetTemplates("cnn_dailymail/3.0.0")[SELECTED_PROMPT_NAME]
 dataset = load_dataset("cnn_dailymail", "3.0.0", cache_dir="/nlp/data/huggingface_cache")
 tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
-def get_max_len(model):
-    if model == "davinci":
-        return 4000
-    elif model == "curie" or model == "ada" or model == "babbage":
-        return 2048
-    elif model == "codex":
-        return 8000
-
 def predict():
     # Build prompt
     def build_text_prompt(model, input_text):
         len_input = len(tokenizer(input_text)['input_ids'])
         text_prompt = ""
-        max_len = get_max_len(model) - MAX_RESPONSE_TOKENS - len_input
+        max_len = args.max_prompt - MAX_RESPONSE_TOKENS - len_input
         sampled_indices = []
         while True:
             index = random.choice(range(len(dataset['train'])))
@@ -48,7 +41,7 @@ def predict():
             example = dataset['train'][index]
             input_text, output_text = template.apply(example)
             new_prompt = text_prompt + input_text + '\n\nAnswer: ' + output_text + '\n\n\n'
-            if len(tokenizer(new_prompt)['input_ids']) > max_len:
+            if len(tokenizer(new_prompt)['input_ids']) > max_len - 20:
                 break
             text_prompt = new_prompt
         return text_prompt, sampled_indices
@@ -108,15 +101,15 @@ def predict():
         golds.append(gold)
         full_indices.append(indices)
 
-    with open(f'pred-{args.model}.txt', 'w') as f:
+    with open(f'pred-{args.model}-{args.max_prompt}.txt', 'w') as f:
         f.writelines([x.replace('\n', ' ') + '\n' for x in preds])
-    with open(f'gold-{args.model}.txt', 'w') as f:
+    with open(f'gold-{args.model}-{args.max_prompt}.txt', 'w') as f:
         f.writelines([x.replace('\n', ' ') + '\n' for x in golds])
-    with open(f'indices-{args.model}.txt', 'w') as f:
+    with open(f'indices-{args.model}-{args.max_prompt}.txt', 'w') as f:
         f.writelines([str(x) + '\n' for x in full_indices])
 
 def evaluate():
-    scores = rouge.get_scores(f'pred-{args.model}.txt',f'gold-{args.model}.txt',avg=True) #TODO: Double check that this is correct/makes sense
+    scores = rouge.get_scores(f'pred-{args.model}-{args.max_prompt}.txt',f'gold-{args.model}-{args.max_prompt}.txt',avg=True) #TODO: Double check that this is correct/makes sense
     print("Rouge Score", scores)
     return "Rouge", scores
 
