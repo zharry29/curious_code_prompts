@@ -114,5 +114,5 @@ def evaluate():
     return "Rouge", scores
 
 if __name__ == "__main__":
-    predict()
+    #predict()
     evaluate()
