@@ -103,7 +103,7 @@ def predict():
     #raise SystemExit
     with open("sampled_1000_indices.pkl", "rb") as f:
         indices = pickle.load(f)
-    for index in indices[:10]:
+    for index in indices:
         example = dataset['test'][index]
         #print(example)
         #raise SystemExit
@@ -115,8 +115,8 @@ def predict():
         elif "code" in args.prompt:
             prompt = build_code_prompt(example)
         #print(len(tokenizer(prompt)['input_ids']))
-        print(prompt)
-        raise SystemExit
+        #print(prompt)
+        #raise SystemExit
         pred_text = run_llm(prompt, args.model)
         if "negative" in pred_text:
             pred = 0
