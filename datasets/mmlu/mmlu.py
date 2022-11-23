@@ -24,6 +24,8 @@ def format_subject(subject):
     return s
 
 def format_example(df, idx, include_answer=True):
+    # print("Index " + str(idx))
+    # print("DF len " + str(len(df)))
     prompt = df.iloc[idx, 0]
     k = df.shape[1] - 2
     for j in range(k):
@@ -38,6 +40,7 @@ def gen_text_prompt(train_df, subject, k=-1):
     if k == -1:
         k = train_df.shape[0]
     for i in range(k):
+        #print("I am in generating text prompt on train df")
         prompt += format_example(train_df, i)
     return prompt
 
@@ -56,6 +59,7 @@ def eval(args, subject, engine, dev_df, test_df):
     for i in range(test_df.shape[0]):
         # get prompt and make sure it fits
         k = args.ntrain
+        #print("I am in generating text prompt on test df")
         prompt_end = format_example(test_df, i, include_answer=False)
         train_prompt = gen_prompt(args, dev_df, subject, k)
         prompt = train_prompt + prompt_end
@@ -66,7 +70,7 @@ def eval(args, subject, engine, dev_df, test_df):
             prompt = train_prompt + prompt_end
 
         label = test_df.iloc[i, test_df.shape[1]-1]
-
+        #print(k)
         while True:
             try:
                 c = openai.Completion.create(
@@ -134,7 +138,9 @@ def main(args):
         all_cors = []
 
         for subject in subjects:
-            dev_df = pd.read_csv(os.path.join(args.data_dir, "dev", subject + "_dev.csv"), header=None)[:args.ntrain]
+            dev_df = pd.read_csv(os.path.join(args.data_dir, "dev", subject + "_dev.csv"), header=None)
+            val_df = pd.read_csv(os.path.join(args.data_dir, "val", subject + "_val.csv"), header=None)
+            dev_df = pd.concat([dev_df, val_df])
             test_df = pd.read_csv(os.path.join(args.data_dir, "test", subject + "_test.csv"), header=None)
 
             cors, acc, probs = eval(args, subject, engine, dev_df, test_df)
