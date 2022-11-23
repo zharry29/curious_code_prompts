@@ -2,17 +2,16 @@ import argparse
 import openai
 from datasets import load_dataset
 import random
-import pickle
 random.seed(29)
 from promptsource.templates import DatasetTemplates
 import time
-from sklearn.metrics import accuracy_score
 from transformers import AutoTokenizer
 from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--prompt', required=True, type=str, help='Either text or code.')
 parser.add_argument('--model', required=True, type=str, help='Either davinci, curie or codex.')
+parser.add_argument('--max_prompt', type=int, default=4000, help='Maximum number of tokens in the prompt.')
 parser.add_argument('--key', required=True, type=str, help='The name of the OpenAI API key file.')
 
 args = parser.parse_args()
@@ -25,21 +24,12 @@ template = DatasetTemplates("squad_v2")[SELECTED_PROMPT_NAME]
 dataset = load_dataset("squad_v2", cache_dir="/nlp/data/huggingface_cache")
 tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
-def get_max_len(model):
-    if model == "davinci":
-        return 4000
-    elif model == "curie" or model == "ada" or model == "babbage":
-        return 2048
-    elif model == "codex":
-        return 8000
-    
-
 def predict():
     # Build prompt
     def build_text_prompt(model, input_text):
         len_input = len(tokenizer(input_text)['input_ids'])
         text_prompt = ""
-        max_len = get_max_len(model) - MAX_RESPONSE_TOKENS - len_input
+        max_len = args.max_prompt - MAX_RESPONSE_TOKENS - len_input
         sampled_indices = []
         while True:
             index = random.choice(range(len(dataset['train'])))
@@ -108,11 +98,11 @@ def predict():
         golds.append(gold if len(gold) > 0 else [''])
         full_indices.append(indices)
 
-    with open(f'pred-{args.model}.txt', 'w') as f:
+    with open(f'pred-{args.model}-{args.max_prompt}.txt', 'w') as f:
         f.writelines([str(x) + '\n' for x in preds])
-    with open(f'gold-{args.model}.txt', 'w') as f:
+    with open(f'gold-{args.model}-{args.max_prompt}.txt', 'w') as f:
         f.writelines([str(x) + '\n' for x in golds])
-    with open(f'indices-{args.model}.txt', 'w') as f:
+    with open(f'indices-{args.model}-{args.max_prompt}.txt', 'w') as f:
         f.writelines([str(x) + '\n' for x in full_indices])
 
 def normalize_text(s):
@@ -158,9 +148,9 @@ def compute_f1(prediction, truth):
     return 2 * (prec * rec) / (prec + rec)
 
 def evaluate():
-    with open(f'pred-{args.model}.txt', 'r') as f:
+    with open(f'pred-{args.model}-{args.max_prompt}.txt', 'r') as f:
         preds = [x.strip() for x in f.readlines()]
-    with open(f'gold-{args.model}.txt', 'r') as f:
+    with open(f'gold-{args.model}-{args.max_prompt}.txt', 'r') as f:
         golds = [eval(x.strip()) for x in f.readlines()]
     em_scores = []
     f1_scores = []
