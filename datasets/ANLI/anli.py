@@ -112,8 +112,15 @@ class ANLI():
         if args.prompt == "text":
             prompt = self.build_text_prompt(max_len)
         elif args.prompt == "code":
-            prompt = None
-            prompt = self.build_code_prompt(max_len, prompt)
+            if args.style == 'comment':
+                prompt = open('./code-prompts/comment_prefix.py').read()
+                prompt = self.build_code_prompt(max_len, prompt)
+            elif args.style == 'class':
+                prompt = open('./code-prompts/class_prefix.py').read()
+                prompt = self.build_code_prompt(max_len, prompt)
+            else:
+                prompt = None
+                prompt = self.build_code_prompt(max_len, prompt)
         
         preds = []
         golds = []
@@ -125,7 +132,8 @@ class ANLI():
                 pred = self.run_llm(prompt + input_text + '\n\nAnswer:', args.model, args.completion_size)
             elif args.prompt == 'code':
                 pred = self.run_llm(prompt + input_text, args.model, args.completion_size)
-            pred = self.parse_pred(pred)
+            
+            pred = self.parse_pred(pred.replace('"', ''))
             gold = example['label']
             preds.append(pred)
             golds.append(gold)
@@ -171,6 +179,8 @@ def apply_code_template(example):
         label_idx = label_idx[0]
     label_text = label_to_text[str(label_idx)]
     for t in template.split('$'):
+        if hypothesis.strip()[-1] != '.':
+            hypothesis += '.'
         ret.append(t.replace("{premise}", premise).replace("{hypothesis}", hypothesis).replace("{label}", label_text))
     return ret
 
