@@ -185,12 +185,12 @@ def apply_code_template(example):
 
 def get_fname():
     if not args.style:
-        pred_name = f'{args.prompt}_{args.model}_pred_{args.context_size}'
+        pred_name = f'{args.prompt}_{args.model}_pred_{args.context_size}_{args.seed}'
     else:
         pred_name = f'{args.prompt}_{args.style}_{args.model}_pred_{args.context_size}'
     
     if not args.style:
-        gold_name = f'{args.prompt}_{args.model}_gold_{args.context_size}'
+        gold_name = f'{args.prompt}_{args.model}_gold_{args.context_size}_{args.seed}'
     else:
         gold_name = f'{args.prompt}_{args.style}_{args.model}_gold_{args.context_size}'
     
@@ -203,6 +203,7 @@ parser.add_argument('--model', type=str, help='Either davinci, curie or codex.')
 parser.add_argument('--context_size', type=int, help='Context window size of GPT3 model.')
 parser.add_argument('--completion_size', type=int, help='completion (max_lens) size of GPT3 model.')
 parser.add_argument('--style', type=str, help='choose style of code prompt from one of ["vanilla", "good_var_name", "with_comments", "class_obj"]')
+parser.add_argument('--seed', type=int, default=None, help='random seed')
 #parser.add_argument('--dataset', type=str, help='Name of the datasset')
 #parser.add_argument('--xxx', action='store_true', help='')
 parser.add_argument('--key', type=str, help='The name of the OpenAI API key file.')
@@ -222,6 +223,10 @@ def compute_longest_prompt(val_idx, val_data, apply_template):
 if __name__ == '__main__':
     args = parser.parse_args()
     openai.api_key_path = f'../../_private/{args.key}.key'
+
+    if args.seed:
+        np.random.seed(args.seed)
+        random.seed(args.seed)
 
     data_name = 'hotpot_qa'
     dataset, templates = utils.load_data(data_name)
