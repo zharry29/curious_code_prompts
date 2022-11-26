@@ -116,7 +116,7 @@ class Winogrande():
             prompt = None
         
         if args.prompt == "text":
-            prompt = self.build_text_prompt(max_len, prompt)
+            prompt = self.build_text_prompt(max_len)
         elif args.prompt == "code":
             prompt = self.build_code_prompt(max_len, prompt)
 
