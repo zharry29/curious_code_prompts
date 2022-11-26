@@ -116,10 +116,10 @@ class Winogrande():
             prompt = None
         
         if args.prompt == "text":
-            prompt = self.build_text_prompt(max_len, prompt)
+            prompt = self.build_text_prompt(max_len)
         elif args.prompt == "code":
             prompt = self.build_code_prompt(max_len, prompt)
-
+        
         preds = []
         golds = []
         for idx in tqdm(val_idx):
@@ -139,7 +139,7 @@ class Winogrande():
                 input_text = input_text.split('\n')
                 input_text[-2], input_text[-1] = self.parse_input(input_text[-2]), self.parse_input(input_text[-1])
                 input_text = '\n'.join(input_text)
-            
+
             if args.prompt == "text": 
                 pred = self.run_llm(prompt + input_text + '\n\nAnswer:', args.model, args.completion_size)
             else: 
@@ -200,12 +200,12 @@ def apply_code_template(example):
 
 def get_fname():
     if not args.style:
-        pred_name = f'{args.prompt}_{args.model}_pred_{args.context_size}'
+        pred_name = f'{args.prompt}_{args.model}_pred_{args.context_size}_{args.seed}'
     else:
         pred_name = f'{args.prompt}_{args.style}_{args.model}_pred_{args.context_size}'
     
     if not args.style:
-        gold_name = f'{args.prompt}_{args.model}_gold_{args.context_size}'
+        gold_name = f'{args.prompt}_{args.model}_gold_{args.context_size}_{args.seed}'
     else:
         gold_name = f'{args.prompt}_{args.style}_{args.model}_gold_{args.context_size}'
     
@@ -218,6 +218,7 @@ parser.add_argument('--model', type=str, help='Either davinci, curie or codex.')
 parser.add_argument('--style', type=str, help='choose style of code prompt from one of ["vanilla", "good_var_name", "with_comments", "class_obj"]')
 parser.add_argument('--context_size', type=int, help='token threshold for GPT3 context prompt.')
 parser.add_argument('--completion_size', type=int, help='token threshold for GPT3 completion.')
+parser.add_argument('--seed', type=int, default=None, help='random seed')
 #parser.add_argument('--dataset', type=str, help='Name of the datasset')
 #parser.add_argument('--xxx', action='store_true', help='')
 parser.add_argument('--key', type=str, help='The name of the OpenAI API key file.')
@@ -227,8 +228,11 @@ if __name__ == '__main__':
     args = parser.parse_args()
     openai.api_key_path = f'../../_private/{args.key}.key'
 
-    data_name = 'winogrande'
+    if args.seed:
+        random.seed(args.seed)
+        np.random.seed(args.seed)
 
+    data_name = 'winogrande'
     dataset, templates = utils.load_data(data_name)
 
     if args.prompt == "text":
@@ -238,14 +242,5 @@ if __name__ == '__main__':
 
     inference_model = Winogrande(apply_template)
 
-    # # !============ Code in development ===============
-    # if args.prompt == 'text':
-    #     test = inference_model.build_text_prompt()
-    # elif args.prompt == 'code':
-    #     test = inference_model.build_code_prompt(args.style)
-    # print(test)
-    # raise SystemExit()
-    # # !============ Code in development ===============
-
-    # inference_model.predict()
-    inference_model.evaluate()
+    inference_model.predict()
+    # inference_model.evaluate()
