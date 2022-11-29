@@ -136,6 +136,8 @@ class OpenPI():
                         llm_pred.append('There will be no change.')
                     elif llm_pred.strip()[-1] == ',':
                         llm_pred = llm_pred[:-1] + "]"
+                    elif llm_pred.strip()[-3:] in ["'']", '""]']:
+                        llm_pred = llm_pred.strip()[:-2] + ']'
                     elif llm_pred.strip()[-2:] not in ["']", '"]']:
                         llm_pred += "']"
                     llm_pred = ast.literal_eval(llm_pred)
