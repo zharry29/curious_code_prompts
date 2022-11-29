@@ -1,10 +1,8 @@
 import os
-import logging
+from transformers import GPT2Tokenizer
 from datasets import load_dataset
 from promptsource.templates import DatasetTemplates
 from promptsource.templates import TemplateCollection
-
-logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
 
 
 def check_subset(dataset):
@@ -20,10 +18,17 @@ def check_subset(dataset):
         print(f"\nChoose a subset of {dataset}:\n")
         for idx, option in enumerate(subset_options):
             print(str(idx) + '. ' + option)
-        select_idx = input("\nSelect the index: ")
+        # select_idx = input("\nSelect the index: ")
+        select_idx = 0
         SELECTED_SUBSET_NAME = subset_options[int(select_idx)]
 
     return SELECTED_SUBSET_NAME
+
+
+def gpt3_tokenizer(inp):
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    res = tokenizer(inp)['input_ids']
+    return len(res)
 
 
 def check_prompt_number(prompt_names, dataset):
@@ -31,7 +36,8 @@ def check_prompt_number(prompt_names, dataset):
         print(f"\nChoose a prompt of {dataset}:\n")
         for idx, option in enumerate(prompt_names):
             print(str(idx) + '. ' + option)
-        select_idx = input("\nSelect the index: ")
+        # select_idx = input("\nSelect the index: ")
+        select_idx = 0
         SELECTED_PROMPT_NAME = prompt_names[int(select_idx)]
         return SELECTED_PROMPT_NAME
     else:
@@ -39,7 +45,6 @@ def check_prompt_number(prompt_names, dataset):
 
     
 def load_data(data_name):
-    logging.info(f'Retrieving subsets of {data_name}...')
     SELECTED_SUBSET_NAME = check_subset(data_name)
 
     if SELECTED_SUBSET_NAME:
