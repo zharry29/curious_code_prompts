@@ -1,12 +1,19 @@
 import os 
 import json
 from glob import glob
+from transformers import GPT2Tokenizer
 
 def load_data(path):
     with open(path, 'r') as f:
         data = json.load(f)
     f.close()
     return data
+
+
+def gpt3_tokenizer(inp):
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    res = tokenizer(inp)['input_ids']
+    return len(res)
 
 
 def load_meta_data(path):

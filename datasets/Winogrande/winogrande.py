@@ -68,7 +68,6 @@ class Winogrande():
     def parse_input(self, inp):
         return '- ' + "'" + inp.replace('-', '').strip() + "'"
 
-
     def run_llm(self, prompt, model, max_tokens, temperature=0.7, stop=['\n']):
         model_name = {
             "davinci": "text-davinci-002",
