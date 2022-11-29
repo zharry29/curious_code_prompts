@@ -71,6 +71,7 @@ class Winogrande():
     def run_llm(self, prompt, model, max_tokens, temperature=0.7, stop=['\n']):
         model_name = {
             "davinci": "text-davinci-002",
+            "davinci003": "text-davinci-003",
             "curie": "text-curie-001",
             "codex": "code-davinci-002",
             "ada": "text-ada-001",
@@ -96,12 +97,15 @@ class Winogrande():
         gen_text = ret["choices"][0]["text"].strip()#.split('\n')[0]
         return gen_text
 
-    def predict(self):
+    def predict(self, index=None):
         val_data = dataset['validation']
-        val_idx = np.random.choice(np.arange(len(val_data['answer'])), 1000, replace=False)
-        with open(f'./indices/{args.model}_val_idx.pkl', 'wb') as f:
-            pickle.dump(val_idx, f)
-        f.close()
+        if not index:
+            val_idx = np.random.choice(np.arange(len(val_data['answer'])), 1000, replace=False)
+            with open(f'./indices/{args.model}_val_idx.pkl', 'wb') as f:
+                pickle.dump(val_idx, f)
+            f.close()
+        else:
+            val_idx = pickle.load(open(f'./indices/{args.index}.pkl', 'rb'))
 
         max_len = compute_longest_prompt(val_idx, val_data, self.apply_template)
 
@@ -218,6 +222,7 @@ parser.add_argument('--style', type=str, help='choose style of code prompt from 
 parser.add_argument('--context_size', type=int, help='token threshold for GPT3 context prompt.')
 parser.add_argument('--completion_size', type=int, help='token threshold for GPT3 completion.')
 parser.add_argument('--seed', type=int, default=None, help='random seed')
+parser.add_argument('--index', type=str, help='file name of the saved indices')
 #parser.add_argument('--dataset', type=str, help='Name of the datasset')
 #parser.add_argument('--xxx', action='store_true', help='')
 parser.add_argument('--key', type=str, help='The name of the OpenAI API key file.')
