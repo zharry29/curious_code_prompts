@@ -231,9 +231,14 @@ def compute_longest_prompt(val_data, apply_template):
         goal = val['goal']
         steps = val['steps']
         cur_prompt = apply_template(goal, steps)
-        cur_prompt = [' '.join(lst) for lst in cur_prompt]
-        for sub_prompt in cur_prompt:
-            cur_len = utils.gpt3_tokenizer(sub_prompt + '\n\nAnswer:')
+        if args.prompt == 'code':
+            cur_prompt = [' '.join(lst) for lst in cur_prompt]
+            for sub_prompt in cur_prompt:
+                cur_len = utils.gpt3_tokenizer(sub_prompt + '\n\nAnswer:')
+                if cur_len > max_len:
+                    max_len = cur_len
+        else:
+            cur_len = utils.gpt3_tokenizer(cur_prompt + '\n\nAnswer:')
             if cur_len > max_len:
                 max_len = cur_len
     return max_len
