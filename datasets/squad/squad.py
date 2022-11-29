@@ -24,6 +24,13 @@ template = DatasetTemplates("squad_v2")[SELECTED_PROMPT_NAME]
 dataset = load_dataset("squad_v2", cache_dir="/nlp/data/huggingface_cache")
 tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
+def apply_code_template(example):
+    with open(args.prompt + '.py') as f:
+        template = f.read()
+    answer = example["answers"]["text"][0] if len(example["answers"]["text"]) > 0 else "unanswerable"
+    template = template.replace("{context}", example["context"]).replace("{question}", example["question"]).replace("{answer}", answer)
+    return template.split("<\split>")
+
 def predict():
     # Build prompt
     def build_text_prompt(model, input_text):
@@ -45,8 +52,22 @@ def predict():
         return text_prompt, sampled_indices
 
     def build_code_prompt(model, input_text):
+        len_input = len(tokenizer(input_text)['input_ids'])
         code_prompt = ""
-        return code_prompt
+        max_len = args.max_prompt - MAX_RESPONSE_TOKENS - len_input
+        sampled_indices = []
+        while True:
+            index = random.choice(range(len(dataset['train'])))
+            while index in sampled_indices:
+                index = random.choice(range(len(dataset['train'])))
+            sampled_indices.append(index)
+            example = dataset['train'][index]
+            input_text, output_text = apply_code_template(example)
+            new_prompt = code_prompt + input_text + output_text + '\n\n'
+            if len(tokenizer(new_prompt)['input_ids']) > max_len - 20:
+                break
+            code_prompt = new_prompt
+        return code_prompt, sampled_indices
 
     def run_llm(prompt, model, temperature=0, stop=['\n']):
         model_name = {
@@ -84,25 +105,26 @@ def predict():
 
     for index in tqdm(example_indices):
         example = dataset['validation'][index]
-
-        input_text, output_text = template.apply(example)
-
         if args.prompt == "text":
+            input_text, _ = template.apply(example)
             prompt, indices = build_text_prompt(args.model, input_text)
-        elif args.prompt == "code":
-            prompt = build_code_prompt(args.model, input_text)
+            pred = run_llm(prompt + input_text, args.model)
+        elif args.prompt.startswith("code"):
+            input_text, _ = apply_code_template(example)
+            prompt, indices = build_code_prompt(args.model, input_text)
+            pred = run_llm(prompt + input_text, args.model)
         
-        pred = run_llm(prompt + input_text, args.model)
         gold = example["answers"]["text"]
-        preds.append(pred if normalize_text(pred) != 'unanswerable' else '')
+        pred = normalize_text(pred)
+        preds.append(pred if pred != 'unanswerable' else '')
         golds.append(gold if len(gold) > 0 else [''])
         full_indices.append(indices)
 
-    with open(f'pred-{args.model}-{args.max_prompt}.txt', 'w') as f:
+    with open(f'pred-{args.model}-{args.max_prompt}-{args.prompt}.txt', 'w') as f:
         f.writelines([str(x) + '\n' for x in preds])
-    with open(f'gold-{args.model}-{args.max_prompt}.txt', 'w') as f:
+    with open(f'gold-{args.model}-{args.max_prompt}-{args.prompt}.txt', 'w') as f:
         f.writelines([str(x) + '\n' for x in golds])
-    with open(f'indices-{args.model}-{args.max_prompt}.txt', 'w') as f:
+    with open(f'indices-{args.model}-{args.max_prompt}-{args.prompt}.txt', 'w') as f:
         f.writelines([str(x) + '\n' for x in full_indices])
 
 def normalize_text(s):
@@ -148,9 +170,9 @@ def compute_f1(prediction, truth):
     return 2 * (prec * rec) / (prec + rec)
 
 def evaluate():
-    with open(f'pred-{args.model}-{args.max_prompt}.txt', 'r') as f:
+    with open(f'pred-{args.model}-{args.max_prompt}-{args.prompt}.txt', 'r') as f:
         preds = [x.strip() for x in f.readlines()]
-    with open(f'gold-{args.model}-{args.max_prompt}.txt', 'r') as f:
+    with open(f'gold-{args.model}-{args.max_prompt}-{args.prompt}.txt', 'r') as f:
         golds = [eval(x.strip()) for x in f.readlines()]
     em_scores = []
     f1_scores = []
