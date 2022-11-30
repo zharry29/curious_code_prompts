@@ -246,5 +246,5 @@ if __name__ == '__main__':
 
     inference_model = Winogrande(apply_template)
 
-    inference_model.predict()
-    # inference_model.evaluate()
+    # inference_model.predict()
+    inference_model.evaluate()
