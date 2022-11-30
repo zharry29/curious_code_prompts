@@ -131,16 +131,23 @@ class OpenPI():
                 cur_gold = [ast.literal_eval(lst[1].strip()) for lst in cur_template]
                 for i, step_prompt in enumerate(tqdm(prompt_template, position=1, leave=False)):
                     cur_prompt = prompt + step_prompt
-                    llm_pred = self.run_llm(cur_prompt, args.model, stop='\n\n')
+                    llm_pred = self.run_llm(cur_prompt, args.model, stop='\n\n').strip()
+                    print(llm_pred[-1])
+
+                    if llm_pred[-1] in ["'", '"']:
+                        llm_pred += ']'
+                    
+                    try:
+                        llm_pred = ast.literal_eval(llm_pred)
+                    except:
+                        llm_pred = ','.join(llm_pred.split(',')[:-1]) + ']'
+                        try:
+                            llm_pred = ast.literal_eval(llm_pred)
+                        except:
+                            llm_pred = []
+                            
                     if len(llm_pred) == 0:
                         llm_pred.append('There will be no change.')
-                    elif llm_pred.strip()[-1] == ',':
-                        llm_pred = llm_pred[:-1] + "]"
-                    elif llm_pred.strip()[-3:] in ["'']", '""]', ',"]', ",']"]:
-                        llm_pred = llm_pred.strip()[:-3] + "']"
-                    elif llm_pred.strip()[-2:] not in ["']", '"]']:
-                        llm_pred += "']"
-                    llm_pred = ast.literal_eval(llm_pred)
                     preds.append({'id': f'{str(id)}||{str(i+1)}', 'answers': llm_pred})
                 golds += [{'id': f'{str(id)}||{str(i+1)}', 'answers': g} for i, g in enumerate(cur_gold)]
 
