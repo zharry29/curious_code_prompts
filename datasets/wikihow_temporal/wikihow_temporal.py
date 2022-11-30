@@ -83,6 +83,7 @@ def predict():
         model_name = {
             "davinci": "text-davinci-002",
             "davinci003": "text-davinci-003",
+            "old_davinci": "davinci",
             "curie": "text-curie-001",
             "ada": "text-ada-001",
             "codex": "code-davinci-002",
@@ -123,7 +124,7 @@ def predict():
         elif "code" in args.prompt:
             prompt = build_code_prompt(example)
         pred_text = run_llm(prompt, args.model)
-        print(prompt)
+        #print(prompt)
         #print(pred_text)
         #print(len(tokenizer(prompt)['input_ids']))
         if args.prompt == "text":

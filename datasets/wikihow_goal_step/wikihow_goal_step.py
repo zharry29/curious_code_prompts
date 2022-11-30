@@ -83,6 +83,7 @@ def predict():
         model_name = {
             "davinci": "text-davinci-002",
             "davinci003": "text-davinci-003",
+            "old_davinci": "davinci",
             "curie": "text-curie-001",
             "ada": "text-ada-001",
             "codex": "code-davinci-002",
