@@ -97,7 +97,11 @@ class OpenPI():
         
         preds = []
         golds = []
+        count = 0
         for id, example in tqdm(val_data.items(), position=0, leave=False):
+            if count > 10:
+                break
+            count += 1
             goal = example['goal']
             steps = example['steps']
             if args.prompt == 'text':
@@ -151,11 +155,11 @@ class OpenPI():
                     preds.append({'id': f'{str(id)}||{str(i+1)}', 'answers': llm_pred})
                 golds += [{'id': f'{str(id)}||{str(i+1)}', 'answers': g} for i, g in enumerate(cur_gold)]
 
-        with open(f'./result/{pred_name}.jsonl', 'w') as f:
+        with open(f'./result/test_{pred_name}.jsonl', 'w') as f:
             for d in preds:
                 json.dump(d, f)
                 f.write('\n')
-        with open(f'./result/{gold_name}.jsonl', 'w') as f:
+        with open(f'./result/test_{gold_name}.jsonl', 'w') as f:
             for d in golds:
                 json.dump(d, f)
                 f.write('\n')

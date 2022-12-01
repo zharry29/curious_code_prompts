@@ -71,6 +71,7 @@ class Winogrande():
     def run_llm(self, prompt, model, max_tokens, temperature=0.7, stop=['\n']):
         model_name = {
             "davinci": "text-davinci-002",
+            "davinci-old": "davinci",
             "davinci003": "text-davinci-003",
             "curie": "text-curie-001",
             "codex": "code-davinci-002",
@@ -246,5 +247,5 @@ if __name__ == '__main__':
 
     inference_model = Winogrande(apply_template)
 
-    # inference_model.predict()
+    inference_model.predict()
     inference_model.evaluate()
