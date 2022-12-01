@@ -68,6 +68,7 @@ class ANLI():
     def run_llm(self, prompt, model, max_tokens, temperature=0, stop=['\n']):
         model_name = {
             "davinci": "text-davinci-002",
+            "davinci-old": "davinci",
             "davinci003": "text-davinci-003",
             "curie": "text-curie-001",
             "codex": "code-davinci-002",
@@ -225,39 +226,39 @@ if __name__ == '__main__':
     data_name = 'anli'
     dataset, templates = utils.load_data(data_name)
 
-    # if args.prompt == "text":
-    #     apply_template = templates.apply
-    # elif args.prompt == "code":
-    #     apply_template = apply_code_template
+    if args.prompt == "text":
+        apply_template = templates.apply
+    elif args.prompt == "code":
+        apply_template = apply_code_template
 
-    # if not args.index:
-    #     val_idx_dict = []
-    # else:
-    #     val_idx_dict = pickle.load(open(f'./indices/{args.index}.pkl', 'rb'))
+    if not args.index:
+        val_idx_dict = []
+    else:
+        val_idx_dict = pickle.load(open(f'./indices/{args.index}.pkl', 'rb'))
 
-    # preds, golds = [], []
-    # for i in range(1, 4):
-    #     inference_model = ANLI(apply_template, i)
-    #     if args.index:
-    #         val_idx = val_idx_dict[i-1]
-    #     else:
-    #         val_idx = None
-    #     val_idx, pred, gold = inference_model.predict(val_idx)
-    #     if not args.index:
-    #         val_idx_dict.append(val_idx)
-    #     preds += pred
-    #     golds += gold
+    preds, golds = [], []
+    for i in range(1, 4):
+        inference_model = ANLI(apply_template, i)
+        if args.index:
+            val_idx = val_idx_dict[i-1]
+        else:
+            val_idx = None
+        val_idx, pred, gold = inference_model.predict(val_idx)
+        if not args.index:
+            val_idx_dict.append(val_idx)
+        preds += pred
+        golds += gold
 
-    # pred_name, gold_name = get_fname()
+    pred_name, gold_name = get_fname()
     
-    # with open(f'./result/{pred_name}.txt', 'w') as f:
-    #     f.writelines([str(x) + '\n' for x in preds])
-    # with open(f'./result/{gold_name}.txt', 'w') as f:
-    #     f.writelines([str(x) + '\n' for x in golds])
+    with open(f'./result/{pred_name}.txt', 'w') as f:
+        f.writelines([str(x) + '\n' for x in preds])
+    with open(f'./result/{gold_name}.txt', 'w') as f:
+        f.writelines([str(x) + '\n' for x in golds])
 
-    # with open(f'./indices/{args.model}_val_idx_{args.context_size}.pkl', 'wb') as f:
-    #     pickle.dump(val_idx_dict, f)
-    # f.close()
+    with open(f'./indices/{args.model}_val_idx_{args.context_size}.pkl', 'wb') as f:
+        pickle.dump(val_idx_dict, f)
+    f.close()
 
     for i in range(1, 4):
         inference_model = ANLI(templates, i)

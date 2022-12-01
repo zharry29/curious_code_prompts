@@ -53,6 +53,8 @@ class OpenPI():
     def run_llm(self, prompt, model, temperature=0.7, stop=['\n\n']):
         model_name = {
             "davinci": "text-davinci-002",
+            "davinci003": "text-davinci-003",
+            "davinci-old": "davinci",
             "curie": "text-curie-001",
             "codex": "code-davinci-002",
             "ada": "text-ada-001"
@@ -97,11 +99,7 @@ class OpenPI():
         
         preds = []
         golds = []
-        count = 0
         for id, example in tqdm(val_data.items(), position=0, leave=False):
-            if count > 10:
-                break
-            count += 1
             goal = example['goal']
             steps = example['steps']
             if args.prompt == 'text':
