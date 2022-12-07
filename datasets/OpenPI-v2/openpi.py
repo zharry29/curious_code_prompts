@@ -22,6 +22,7 @@ class OpenPI():
         train_dict = self.metadata['train'] 
         prompt = ''
         cur_len = 0
+        counter = 0 
         for event_dict in train_dict.values():
             goal = event_dict['goal']
             steps = event_dict['steps']
@@ -31,6 +32,10 @@ class OpenPI():
                 break
             else:
                 prompt += cur_prompt
+                counter += 1
+
+        print(f'Total samples in prompt: {counter}')
+        print(f'Average tokens per sample: {cur_len / counter}')
         return prompt
 
     def build_code_prompt(self, max_len):
