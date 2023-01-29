@@ -10,15 +10,20 @@ import csv
 import pickle
 from transformers import AutoTokenizer
 tokenizer = AutoTokenizer.from_pretrained("gpt2")
+import backoff
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--prompt', default='text', type=str, help='Either text or code.')
 parser.add_argument('--model', default='codex', type=str, help='Either davinci, curie or codex.')
 parser.add_argument('--max_prompt', type=int, default=4000, help='Maximum number of tokens in the prompt.')
 parser.add_argument('--key', default='harry', type=str, help='The name of the OpenAI API key file.')
+parser.add_argument('--seed', default='', type=str, help='Random seed.')
 
 args = parser.parse_args()
 openai.api_key = open(f'../../_private/{args.key}.key').read()
+if args.seed:
+    args.seed = '_' + args.seed
+    random.seed(int(args.seed[1:]))
 
 def load_data():
     dataset = {'train': [], 'test': []}
@@ -79,6 +84,7 @@ def predict():
             text_prompt += input_text + output_text + '\n\n\n'
         return(prev_prompt + inference_input_text)
 
+    @backoff.on_exception(backoff.expo, openai.error.RateLimitError)
     def run_llm(prompt, model, temperature=0, stop=['\n']):
         model_name = {
             "davinci": "text-davinci-002",
@@ -139,13 +145,13 @@ def predict():
         preds.append(pred)
         golds.append(gold)
 
-    with open(f'pred_{args.model}_{args.prompt}_{args.max_prompt}.txt', 'w') as f:
+    with open(f'pred_{args.model}_{args.prompt}_{args.max_prompt}{args.seed}.txt', 'w') as f:
         f.writelines([str(x) + '\n' for x in preds])
     with open('gold.txt', 'w') as f:
         f.writelines([str(x) + '\n' for x in golds])
 
 def evaluate():
-    with open(f'pred_{args.model}_{args.prompt}_{args.max_prompt}.txt', 'r') as f:
+    with open(f'pred_{args.model}_{args.prompt}_{args.max_prompt}{args.seed}.txt', 'r') as f:
         preds = [x.strip() for x in f.readlines()]
     with open('gold.txt', 'r') as f:
         golds = [x.strip() for x in f.readlines()]
