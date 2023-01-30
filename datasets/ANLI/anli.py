@@ -24,6 +24,7 @@ class ANLI():
         total_token = max_len
         threshold = args.context_size 
         tolerance = 0
+        counter = 0
         while total_token < threshold:
             example_index = random.sample(range(len(dataset[f'train_r{self.idx}'])), 1)[0]
             example = dataset[f'train_r{self.idx}'][example_index]
@@ -34,10 +35,13 @@ class ANLI():
             if total_token + token_count < threshold:
                 text_prompt += candidate_prompt
                 total_token += token_count
+                counter += 1
             if  total_token - prev_total < 10:
                 tolerance += 1
                 if tolerance > 1:
                     break
+        print(f'Total samples in prompt: {counter}')
+        print(f'Average tokens per sample: {total_token / counter}')
         return text_prompt
     
     def build_code_prompt(self, max_len, prompt):

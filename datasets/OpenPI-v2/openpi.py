@@ -22,15 +22,20 @@ class OpenPI():
         train_dict = self.metadata['train'] 
         prompt = ''
         cur_len = 0
-        for event_dict in train_dict.values():
+        counter = 0 
+
+        while cur_len + max_len <= args.context_size:
+            cur_idx = str(np.random.choice(len(train_dict), 1, replace=False)[0])
+            event_dict = train_dict[cur_idx]
             goal = event_dict['goal']
             steps = event_dict['steps']
             cur_prompt = apply_template(goal, steps) 
             cur_len += utils.gpt3_tokenizer(cur_prompt)
-            if cur_len + max_len > args.context_size:
-                break
-            else:
-                prompt += cur_prompt
+            prompt += cur_prompt
+            counter += 1
+
+        print(f'Total samples in prompt: {counter}')
+        print(f'Average tokens per sample: {cur_len / counter}')
         return prompt
 
     def build_code_prompt(self, max_len):
@@ -283,6 +288,11 @@ parser.add_argument('--key', type=str, help='The name of the OpenAI API key file
 
 if __name__ == '__main__':
     args = parser.parse_args()
+
+    if args.seed:
+        random.seed(args.seed)
+        np.random.seed(args.seed)
+
     openai.api_key_path = f'../../_private/{args.key}.key'
 
     data_name = 'anli'
