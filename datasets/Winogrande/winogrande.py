@@ -23,6 +23,7 @@ class Winogrande():
         total_token = max_len
         threshold = args.context_size 
         tolerance = 0
+        counter = 0
         while total_token < threshold:
             example_index = random.sample(range(len(dataset['train'])), 1)
             example = dataset['train'][example_index]
@@ -33,10 +34,13 @@ class Winogrande():
             if total_token + token_count < threshold:
                 text_prompt += candidate_prompt
                 total_token += token_count
+                counter += 1
             if  total_token - prev_total < 10:
                 tolerance += 1
                 if tolerance > 1:
                     break
+        print(f'Total samples in prompt: {counter}')
+        print(f'Average tokens per sample: {total_token / counter}')
         return text_prompt
 
     def build_code_prompt(self, max_len, prompt):
@@ -123,7 +127,7 @@ class Winogrande():
             prompt = self.build_text_prompt(max_len)
         elif args.prompt == "code":
             prompt = self.build_code_prompt(max_len, prompt)
-        
+
         preds = []
         golds = []
         for idx in tqdm(val_idx):

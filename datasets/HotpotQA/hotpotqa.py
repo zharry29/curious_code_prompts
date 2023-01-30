@@ -19,6 +19,7 @@ class HotpotQA():
         text_prompt = ""
         total_token = utils.gpt3_tokenizer(input_text)
         threshold = args.context_size
+        counter = 0
         while total_token < threshold:
             example_index = random.sample(range(len(dataset['train'])), 1)[0]
             example = dataset['train'][example_index]
@@ -28,9 +29,12 @@ class HotpotQA():
             if total_token + token_count < threshold:
                 text_prompt += candidate_prompt
                 total_token += token_count
+                counter += 1
             else:
                 if text_prompt:
                     break
+        print(f'Total samples in prompt: {counter}')
+        print(f'Average tokens per sample: {total_token / counter}')
         return text_prompt
     
     def build_code_prompt(self, input_text, prompt=None):
@@ -122,6 +126,7 @@ class HotpotQA():
                 pred = self.run_llm(prompt + input_text, args.model, args.completion_size)
             
             gold = example['answer']
+
             preds['answer'][f'seacow-{i}'] = pred
             golds.append({'_id': f'seacow-{i}', 'answer': gold})
         
@@ -216,10 +221,6 @@ def compute_longest_prompt(val_idx, val_data, apply_template):
 if __name__ == '__main__':
     args = parser.parse_args()
     openai.api_key_path = f'../../_private/{args.key}.key'
-    if args.seed:
-        random.seed(args.seed)
-        np.random.seed(args.seed)
-
     if args.seed:
         np.random.seed(args.seed)
         random.seed(args.seed)
