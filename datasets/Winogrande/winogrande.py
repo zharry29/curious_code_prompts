@@ -23,6 +23,7 @@ class Winogrande():
         total_token = max_len
         threshold = args.context_size 
         tolerance = 0
+        counter = 0
         while total_token < threshold:
             example_index = random.sample(range(len(dataset['train'])), 1)
             example = dataset['train'][example_index]
@@ -33,10 +34,13 @@ class Winogrande():
             if total_token + token_count < threshold:
                 text_prompt += candidate_prompt
                 total_token += token_count
+                counter += 1
             if  total_token - prev_total < 10:
                 tolerance += 1
                 if tolerance > 1:
                     break
+        print(f'Total samples in prompt: {counter}')
+        print(f'Average tokens per sample: {total_token / counter}')
         return text_prompt
 
     def build_code_prompt(self, max_len, prompt):
@@ -68,10 +72,11 @@ class Winogrande():
     def parse_input(self, inp):
         return '- ' + "'" + inp.replace('-', '').strip() + "'"
 
-
     def run_llm(self, prompt, model, max_tokens, temperature=0.7, stop=['\n']):
         model_name = {
             "davinci": "text-davinci-002",
+            "davinci-old": "davinci",
+            "davinci003": "text-davinci-003",
             "curie": "text-curie-001",
             "codex": "code-davinci-002",
             "ada": "text-ada-001",
@@ -97,12 +102,15 @@ class Winogrande():
         gen_text = ret["choices"][0]["text"].strip()#.split('\n')[0]
         return gen_text
 
-    def predict(self):
+    def predict(self, index=None):
         val_data = dataset['validation']
-        val_idx = np.random.choice(np.arange(len(val_data['answer'])), 1000, replace=False)
-        with open(f'./indices/{args.model}_val_idx.pkl', 'wb') as f:
-            pickle.dump(val_idx, f)
-        f.close()
+        if not index:
+            val_idx = np.random.choice(np.arange(len(val_data['answer'])), 1000, replace=False)
+            with open(f'./indices/{args.model}_val_idx.pkl', 'wb') as f:
+                pickle.dump(val_idx, f)
+            f.close()
+        else:
+            val_idx = pickle.load(open(f'./indices/{args.index}.pkl', 'rb'))
 
         max_len = compute_longest_prompt(val_idx, val_data, self.apply_template)
 
@@ -116,7 +124,7 @@ class Winogrande():
             prompt = None
         
         if args.prompt == "text":
-            prompt = self.build_text_prompt(max_len, prompt)
+            prompt = self.build_text_prompt(max_len)
         elif args.prompt == "code":
             prompt = self.build_code_prompt(max_len, prompt)
 
@@ -139,7 +147,7 @@ class Winogrande():
                 input_text = input_text.split('\n')
                 input_text[-2], input_text[-1] = self.parse_input(input_text[-2]), self.parse_input(input_text[-1])
                 input_text = '\n'.join(input_text)
-            
+
             if args.prompt == "text": 
                 pred = self.run_llm(prompt + input_text + '\n\nAnswer:', args.model, args.completion_size)
             else: 
@@ -200,12 +208,12 @@ def apply_code_template(example):
 
 def get_fname():
     if not args.style:
-        pred_name = f'{args.prompt}_{args.model}_pred_{args.context_size}'
+        pred_name = f'{args.prompt}_{args.model}_pred_{args.context_size}_{args.seed}'
     else:
         pred_name = f'{args.prompt}_{args.style}_{args.model}_pred_{args.context_size}'
     
     if not args.style:
-        gold_name = f'{args.prompt}_{args.model}_gold_{args.context_size}'
+        gold_name = f'{args.prompt}_{args.model}_gold_{args.context_size}_{args.seed}'
     else:
         gold_name = f'{args.prompt}_{args.style}_{args.model}_gold_{args.context_size}'
     
@@ -218,6 +226,8 @@ parser.add_argument('--model', type=str, help='Either davinci, curie or codex.')
 parser.add_argument('--style', type=str, help='choose style of code prompt from one of ["vanilla", "good_var_name", "with_comments", "class_obj"]')
 parser.add_argument('--context_size', type=int, help='token threshold for GPT3 context prompt.')
 parser.add_argument('--completion_size', type=int, help='token threshold for GPT3 completion.')
+parser.add_argument('--seed', type=int, default=None, help='random seed')
+parser.add_argument('--index', type=str, help='file name of the saved indices')
 #parser.add_argument('--dataset', type=str, help='Name of the datasset')
 #parser.add_argument('--xxx', action='store_true', help='')
 parser.add_argument('--key', type=str, help='The name of the OpenAI API key file.')
@@ -227,8 +237,11 @@ if __name__ == '__main__':
     args = parser.parse_args()
     openai.api_key_path = f'../../_private/{args.key}.key'
 
-    data_name = 'winogrande'
+    if args.seed:
+        random.seed(args.seed)
+        np.random.seed(args.seed)
 
+    data_name = 'winogrande'
     dataset, templates = utils.load_data(data_name)
 
     if args.prompt == "text":
@@ -238,14 +251,5 @@ if __name__ == '__main__':
 
     inference_model = Winogrande(apply_template)
 
-    # # !============ Code in development ===============
-    # if args.prompt == 'text':
-    #     test = inference_model.build_text_prompt()
-    # elif args.prompt == 'code':
-    #     test = inference_model.build_code_prompt(args.style)
-    # print(test)
-    # raise SystemExit()
-    # # !============ Code in development ===============
-
-    # inference_model.predict()
+    inference_model.predict()
     inference_model.evaluate()

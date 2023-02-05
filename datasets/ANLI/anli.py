@@ -24,6 +24,7 @@ class ANLI():
         total_token = max_len
         threshold = args.context_size 
         tolerance = 0
+        counter = 0
         while total_token < threshold:
             example_index = random.sample(range(len(dataset[f'train_r{self.idx}'])), 1)[0]
             example = dataset[f'train_r{self.idx}'][example_index]
@@ -34,10 +35,13 @@ class ANLI():
             if total_token + token_count < threshold:
                 text_prompt += candidate_prompt
                 total_token += token_count
+                counter += 1
             if  total_token - prev_total < 10:
                 tolerance += 1
                 if tolerance > 1:
                     break
+        print(f'Total samples in prompt: {counter}')
+        print(f'Average tokens per sample: {total_token / counter}')
         return text_prompt
     
     def build_code_prompt(self, max_len, prompt):
@@ -68,6 +72,8 @@ class ANLI():
     def run_llm(self, prompt, model, max_tokens, temperature=0, stop=['\n']):
         model_name = {
             "davinci": "text-davinci-002",
+            "davinci-old": "davinci",
+            "davinci003": "text-davinci-003",
             "curie": "text-curie-001",
             "codex": "code-davinci-002",
             "ada": "text-ada-001",
@@ -103,9 +109,10 @@ class ANLI():
         else:
             return -1
     
-    def predict(self):
+    def predict(self, val_idx=None):
         val_data = dataset[f'dev_r{self.idx}']
-        val_idx = np.random.choice(np.arange(len(val_data)), 333, replace=False)
+        if not val_idx:
+            val_idx = np.random.choice(np.arange(len(val_data)), 333, replace=False)
 
         max_len = compute_longest_prompt(val_idx, val_data, self.apply_template)
 
@@ -187,12 +194,12 @@ def apply_code_template(example):
 
 def get_fname():
     if not args.style:
-        pred_name = f'{args.prompt}_{args.model}_pred_{args.context_size}'
+        pred_name = f'{args.prompt}_{args.model}_pred_{args.context_size}_{args.seed}'
     else:
         pred_name = f'{args.prompt}_{args.style}_{args.model}_pred_{args.context_size}'
     
     if not args.style:
-        gold_name = f'{args.prompt}_{args.model}_gold_{args.context_size}'
+        gold_name = f'{args.prompt}_{args.model}_gold_{args.context_size}_{args.seed}'
     else:
         gold_name = f'{args.prompt}_{args.style}_{args.model}_gold_{args.context_size}'
     
@@ -205,6 +212,8 @@ parser.add_argument('--model', type=str, help='Either davinci, curie or codex.')
 parser.add_argument('--context_size', type=int, help='token threshold for GPT3 context prompt.')
 parser.add_argument('--completion_size', type=int, help='token threshold for GPT3 completion.')
 parser.add_argument('--style', type=str, default=None, help='choose style of code prompt from one of ["vanilla", "good_var_name", "with_comments", "class_obj"]')
+parser.add_argument('--seed', type=int, default=None, help='set seed')
+parser.add_argument('--index', type=str, help='file name of the saved indices')
 #parser.add_argument('--dataset', type=str, help='Name of the datasset')
 #parser.add_argument('--xxx', action='store_true', help='')
 parser.add_argument('--key', type=str, help='The name of the OpenAI API key file.')
@@ -213,6 +222,11 @@ parser.add_argument('--key', type=str, help='The name of the OpenAI API key file
 if __name__ == '__main__':
     args = parser.parse_args()
     openai.api_key_path = f'../../_private/{args.key}.key'
+
+    if args.seed:
+        random.seed(args.seed)
+        np.random.seed(args.seed)
+    
     data_name = 'anli'
     dataset, templates = utils.load_data(data_name)
 
@@ -221,12 +235,21 @@ if __name__ == '__main__':
     elif args.prompt == "code":
         apply_template = apply_code_template
 
-    val_idx_dict = []
+    if not args.index:
+        val_idx_dict = []
+    else:
+        val_idx_dict = pickle.load(open(f'./indices/{args.index}.pkl', 'rb'))
+
     preds, golds = [], []
     for i in range(1, 4):
         inference_model = ANLI(apply_template, i)
-        val_idx, pred, gold = inference_model.predict()
-        val_idx_dict.append(val_idx)
+        if args.index:
+            val_idx = val_idx_dict[i-1]
+        else:
+            val_idx = None
+        val_idx, pred, gold = inference_model.predict(val_idx)
+        if not args.index:
+            val_idx_dict.append(val_idx)
         preds += pred
         golds += gold
 
