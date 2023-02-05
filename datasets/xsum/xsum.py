@@ -26,6 +26,13 @@ template = DatasetTemplates("xsum")[SELECTED_PROMPT_NAME]
 dataset = load_dataset("xsum", cache_dir="/nlp/data/huggingface_cache")
 tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
+def apply_code_template(example):
+    with open(args.prompt + '.py') as f:
+        template = f.read()
+    input = example["document"].replace('\n','')
+    template = template.replace("{article}", input).replace("{targets}", example["summary"])
+    return template.split("<\split>")
+
 def predict():
     # Build prompt
     def build_text_prompt(input_text):
@@ -46,13 +53,28 @@ def predict():
             text_prompt = new_prompt
         return text_prompt, sampled_indices
 
-    def build_code_prompt(input_text):
+    def build_code_prompt(model, input_text):
+        len_input = len(tokenizer(input_text)['input_ids'])
         code_prompt = ""
-        return code_prompt
+        max_len = args.max_prompt - MAX_RESPONSE_TOKENS - len_input
+        sampled_indices = []
+        while True:
+            index = random.choice(range(len(dataset['train'])))
+            while index in sampled_indices:
+                index = random.choice(range(len(dataset['train'])))
+            sampled_indices.append(index)
+            example = dataset['train'][index]
+            input_text, output_text = apply_code_template(example)
+            new_prompt = code_prompt + input_text + output_text + '\n\n'
+            if len(tokenizer(new_prompt)['input_ids']) > max_len - 20:
+                break
+            code_prompt = new_prompt
+        return code_prompt, sampled_indices
 
     def run_llm(prompt, model, stop=['\n\n\n']):
         model_name = {
             "davinci": "text-davinci-002",
+            "davinciOld": "davinci",
             "davinci3": "text-davinci-003",
             "curie": "text-curie-001",
             "ada": "text-ada-001",
@@ -85,32 +107,32 @@ def predict():
     full_indices = []
     f = open("sampled_1000_indices.txt", "r")
     example_indices = [int(s.strip()) for s in f.readlines()]
-
+    i = 0
     for index in tqdm(example_indices):
         example = dataset['validation'][index]
-
-        input_text, output_text = template.apply(example)
-
         if args.prompt == "text":
-            prompt, indices = build_text_prompt(input_text)
-        elif args.prompt == "code":
-            prompt = build_code_prompt(input_text)
+            input_text, _ = template.apply(example)
+            prompt, indices = build_text_prompt(args.model, input_text)
+            pred = run_llm(prompt + input_text, args.model)
+        elif args.prompt.startswith("code"):
+            input_text, _ = apply_code_template(example)
+            prompt, indices = build_code_prompt(args.model, input_text)
+            pred = run_llm(prompt + input_text, args.model)
 
-        pred = run_llm(prompt + input_text, args.model)
         gold = example["summary"]
         preds.append(pred)
         golds.append(gold)
         full_indices.append(indices)
 
-    with open(f'pred-{args.model}-{args.max_prompt}.txt', 'w') as f:
-        f.writelines([x.replace('\n', ' ') + '\n' for x in preds])
-    with open(f'gold-{args.model}-{args.max_prompt}.txt', 'w') as f:
+    with open(f'pred-{args.model}-{args.max_prompt}-{args.prompt}.txt', 'w') as f:
+        f.writelines([x.strip('\"').replace('\n', ' ') + '\n' for x in preds])
+    with open(f'gold-{args.model}-{args.max_prompt}-{args.prompt}.txt', 'w') as f:
         f.writelines([x.replace('\n', ' ') + '\n' for x in golds])
-    with open(f'indices-{args.model}-{args.max_prompt}.txt', 'w') as f:
+    with open(f'indices-{args.model}-{args.max_prompt}-{args.prompt}.txt', 'w') as f:
         f.writelines([str(x) + '\n' for x in full_indices])
 
 def evaluate():
-    scores = rouge.get_scores(f'pred-{args.model}-{args.max_prompt}.txt',f'gold-{args.model}-{args.max_prompt}.txt',avg=True) #TODO: Double check that this is correct/makes sense
+    scores = rouge.get_scores(f'pred-{args.model}-{args.max_prompt}-{args.prompt}.txt',f'gold-{args.model}-{args.max_prompt}-{args.prompt}.txt',avg=True) #TODO: Double check that this is correct/makes sense
     print("Rouge Score", scores)
     return "Rouge", scores
 

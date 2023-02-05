@@ -71,6 +71,7 @@ def predict():
 
     def run_llm(prompt, model, temperature=0, stop=['\n']):
         model_name = {
+            "davinciOld": "davinci",
             "davinci": "text-davinci-002",
             "davinci3": "text-davinci-003",
             "curie": "text-curie-001",
