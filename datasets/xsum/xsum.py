@@ -25,12 +25,13 @@ rouge = FilesRouge()
 template = DatasetTemplates("xsum")[SELECTED_PROMPT_NAME]
 dataset = load_dataset("xsum", cache_dir="/nlp/data/huggingface_cache")
 tokenizer = AutoTokenizer.from_pretrained("gpt2")
+print(args.max_prompt)
 
 def apply_code_template(example):
     with open(args.prompt + '.py') as f:
         template = f.read()
     input = example["document"].replace('\n','')
-    template = template.replace("{article}", input).replace("{targets}", example["summary"])
+    template = template.replace("{article}", input).replace("{highlights}", example["summary"])
     return template.split("<\split>")
 
 def predict():
@@ -48,7 +49,7 @@ def predict():
             example = dataset['train'][index]
             input_text, output_text = template.apply(example)
             new_prompt = text_prompt + input_text + ' ' + output_text + '\n\n\n'
-            if len(tokenizer(new_prompt)['input_ids']) > max_len - 20:
+            if len(tokenizer(new_prompt)['input_ids']) > max_len - 50:
                 break
             text_prompt = new_prompt
         return text_prompt, sampled_indices
@@ -66,7 +67,7 @@ def predict():
             example = dataset['train'][index]
             input_text, output_text = apply_code_template(example)
             new_prompt = code_prompt + input_text + output_text + '\n\n'
-            if len(tokenizer(new_prompt)['input_ids']) > max_len - 20:
+            if len(tokenizer(new_prompt)['input_ids']) > max_len - 50:
                 break
             code_prompt = new_prompt
         return code_prompt, sampled_indices
@@ -107,7 +108,6 @@ def predict():
     full_indices = []
     f = open("sampled_1000_indices.txt", "r")
     example_indices = [int(s.strip()) for s in f.readlines()]
-    i = 0
     for index in tqdm(example_indices):
         example = dataset['validation'][index]
         if args.prompt == "text":
@@ -116,6 +116,11 @@ def predict():
             pred = run_llm(prompt + input_text, args.model)
         elif args.prompt.startswith("code"):
             input_text, _ = apply_code_template(example)
+            if len(tokenizer(input_text)['input_ids']) > args.max_prompt - MAX_RESPONSE_TOKENS:
+                preds.append("")
+                golds.append(example["summary"])
+                full_indices.append("")
+                continue
             prompt, indices = build_code_prompt(args.model, input_text)
             pred = run_llm(prompt + input_text, args.model)
 

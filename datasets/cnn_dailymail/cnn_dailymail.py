@@ -66,9 +66,17 @@ def predict():
             example = dataset['train'][index]
             input_text, output_text = apply_code_template(example)
             new_prompt = code_prompt + input_text + output_text + '\n\n\n'
+            total_added = input_text + output_text + '\n\n\n'
+            #print("adding " + str(len(tokenizer(total_added)['input_ids'])) + " to " + str(len(tokenizer(code_prompt)['input_ids'])))
             if len(tokenizer(new_prompt)['input_ids']) > max_len - 20:
+                #print("Over Max Length!")
+                #print(str(len(tokenizer(new_prompt)['input_ids'])) + " > " + str(max_len))
                 break
+            #else:
+                #print("Under max length!")
+                #print(str(len(tokenizer(new_prompt)['input_ids'])) + " <= " + str(max_len))
             code_prompt = new_prompt
+            #print("new length is " + str(len(tokenizer(code_prompt)['input_ids'])))
         return code_prompt, sampled_indices
 
     def run_llm(prompt, model, stop=['\n\n\n']):
@@ -116,6 +124,11 @@ def predict():
             pred = run_llm(prompt + input_text + '\n\nAnswer:', args.model)
         elif args.prompt.startswith("code"):
             input_text, _ = apply_code_template(example)
+            if len(tokenizer(input_text)['input_ids']) > args.max_prompt - MAX_RESPONSE_TOKENS:
+                preds.append("")
+                golds.append(example["highlights"])
+                full_indices.append("")
+                continue
             prompt, indices = build_code_prompt(args.model, input_text)
             pred = run_llm(prompt + input_text, args.model)
 
