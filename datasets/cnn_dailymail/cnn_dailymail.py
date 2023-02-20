@@ -67,16 +67,9 @@ def predict():
             input_text, output_text = apply_code_template(example)
             new_prompt = code_prompt + input_text + output_text + '\n\n\n'
             total_added = input_text + output_text + '\n\n\n'
-            #print("adding " + str(len(tokenizer(total_added)['input_ids'])) + " to " + str(len(tokenizer(code_prompt)['input_ids'])))
             if len(tokenizer(new_prompt)['input_ids']) > max_len - 20:
-                #print("Over Max Length!")
-                #print(str(len(tokenizer(new_prompt)['input_ids'])) + " > " + str(max_len))
                 break
-            #else:
-                #print("Under max length!")
-                #print(str(len(tokenizer(new_prompt)['input_ids'])) + " <= " + str(max_len))
             code_prompt = new_prompt
-            #print("new length is " + str(len(tokenizer(code_prompt)['input_ids'])))
         return code_prompt, sampled_indices
 
     def run_llm(prompt, model, stop=['\n\n\n']):
