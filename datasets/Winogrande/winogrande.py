@@ -115,7 +115,7 @@ class Winogrande():
         max_len = compute_longest_prompt(val_idx, val_data, self.apply_template)
 
         if args.style == 'comment':
-            prompt = "'''\nThis is a coference resolution task. There will be a '_' in a given sentence and options will be provided. You need to choose from given options and fill in the '_'.\n'''\n\n"
+            prompt = "'''\nThis is a coreference resolution task. There will be a '_' in a given sentence and options will be provided. You need to choose from given options and fill in the '_'.\n'''\n\n"
         elif args.style == 'class':
             with open(f'./code-prompts/class_header.py') as f:
                 prompt = f.read()
@@ -152,6 +152,7 @@ class Winogrande():
                 pred = self.run_llm(prompt + input_text + '\n\nAnswer:', args.model, args.completion_size)
             else: 
                 pred = self.run_llm(prompt + input_text, args.model, args.completion_size)
+
             pred = pred.replace("'", '').replace('"', '').lower().strip()
             if pred in options:
                 pred = str(options.index(pred) + 1)

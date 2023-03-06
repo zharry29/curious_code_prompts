@@ -295,9 +295,6 @@ if __name__ == '__main__':
 
     openai.api_key_path = f'../../_private/{args.key}.key'
 
-    data_name = 'anli'
-    NUM_EXAMPLES_IN_PROMPT = 2
-
     meta_data = utils.load_meta_data(args.data_path)
 
     if args.prompt == "text":
