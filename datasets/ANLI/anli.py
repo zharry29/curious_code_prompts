@@ -42,7 +42,7 @@ class ANLI():
                     break
         print(f'Total samples in prompt: {counter}')
         print(f'Average tokens per sample: {total_token / counter}')
-        return text_prompt
+        return text_prompt, counter
     
     def build_code_prompt(self, max_len, prompt):
         if prompt:
@@ -52,22 +52,28 @@ class ANLI():
             code_prompt = ""
             total_token = max_len
         threshold = args.context_size 
+
         tolerance = 0
+        counter = 0
         while total_token < threshold:
             example_index = random.sample(range(len(dataset[f'train_r{self.idx}'])), 1)
             example = dataset[f'train_r{self.idx}'][example_index]
             input_text, output_text = self.apply_template(example)
             candidate_prompt = input_text + output_text + '\n\n'
+            counter += 1
             token_count = utils.gpt3_tokenizer(candidate_prompt)
             prev_total = total_token
             if total_token + token_count < threshold:
                 code_prompt += candidate_prompt
                 total_token += token_count
+                counter += 1
             if  total_token - prev_total < 10:
                 tolerance += 1
                 if tolerance > 1:
                     break
-        return code_prompt
+
+        print(f'Total samples in prompt: {counter}')
+        return code_prompt, counter
 
     def run_llm(self, prompt, model, max_tokens, temperature=0, stop=['\n']):
         model_name = {
@@ -117,11 +123,11 @@ class ANLI():
         max_len = compute_longest_prompt(val_idx, val_data, self.apply_template)
 
         if args.prompt == "text":
-            prompt = self.build_text_prompt(max_len)
+            prompt, count = self.build_text_prompt(max_len)
         elif args.prompt == "code":
             if args.style == 'comment':
                 prompt = open('./code-prompts/comment_prefix.py').read()
-                prompt = self.build_code_prompt(max_len, prompt)
+                prompt, count = self.build_code_prompt(max_len, prompt)
             elif args.style == 'class':
                 prompt = open('./code-prompts/class_prefix.py').read()
                 prompt = self.build_code_prompt(max_len, prompt)
@@ -129,21 +135,24 @@ class ANLI():
                 prompt = None
                 prompt = self.build_code_prompt(max_len, prompt)
         
-        preds = []
-        golds = []
-        for idx in tqdm(val_idx):
-            example = val_data[int(idx)]
-            input_text, output_text = self.apply_template(example)
+        print(count)
+        raise SystemExit()
+        
+        # preds = []
+        # golds = []
+        # for idx in tqdm(val_idx):
+        #     example = val_data[int(idx)]
+        #     input_text, output_text = self.apply_template(example)
 
-            if args.prompt == 'text':
-                pred = self.run_llm(prompt + input_text + '\n\nAnswer:', args.model, args.completion_size)
-            elif args.prompt == 'code':
-                pred = self.run_llm(prompt + input_text, args.model, args.completion_size)
+        #     if args.prompt == 'text':
+        #         pred = self.run_llm(prompt + input_text + '\n\nAnswer:', args.model, args.completion_size)
+        #     elif args.prompt == 'code':
+        #         pred = self.run_llm(prompt + input_text, args.model, args.completion_size)
             
-            pred = self.parse_pred(pred.replace('"', ''))
-            gold = example['label']
-            preds.append(pred)
-            golds.append(gold)
+        #     pred = self.parse_pred(pred.replace('"', ''))
+        #     gold = example['label']
+        #     preds.append(pred)
+        #     golds.append(gold)
         return list(val_idx), preds, golds
     
     def evaluate(self):
@@ -253,16 +262,16 @@ if __name__ == '__main__':
         preds += pred
         golds += gold
 
-    pred_name, gold_name = get_fname()
+    # pred_name, gold_name = get_fname()
     
-    with open(f'./result/{pred_name}.txt', 'w') as f:
-        f.writelines([str(x) + '\n' for x in preds])
-    with open(f'./result/{gold_name}.txt', 'w') as f:
-        f.writelines([str(x) + '\n' for x in golds])
+    # with open(f'./result/{pred_name}.txt', 'w') as f:
+    #     f.writelines([str(x) + '\n' for x in preds])
+    # with open(f'./result/{gold_name}.txt', 'w') as f:
+    #     f.writelines([str(x) + '\n' for x in golds])
 
-    with open(f'./indices/{args.model}_val_idx_{args.context_size}.pkl', 'wb') as f:
-        pickle.dump(val_idx_dict, f)
-    f.close()
+    # with open(f'./indices/{args.model}_val_idx_{args.context_size}.pkl', 'wb') as f:
+    #     pickle.dump(val_idx_dict, f)
+    # f.close()
 
     for i in range(1, 4):
         inference_model = ANLI(templates, i)

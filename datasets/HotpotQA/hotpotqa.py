@@ -33,9 +33,9 @@ class HotpotQA():
             else:
                 if text_prompt:
                     break
-        print(f'Total samples in prompt: {counter}')
-        print(f'Average tokens per sample: {total_token / counter}')
-        return text_prompt
+        # print(f'Total samples in prompt: {counter}')
+        # print(f'Average tokens per sample: {total_token / counter}')
+        return text_prompt, counter
     
     def build_code_prompt(self, input_text, prompt=None):
         if prompt:
@@ -45,11 +45,13 @@ class HotpotQA():
         total_token = utils.gpt3_tokenizer(input_text)
         threshold = args.context_size 
         tolerance = 0
+        count = 0
         while total_token < threshold:
             example_index = random.sample(range(len(dataset['train'])), 1)
             example = dataset['train'][example_index]
             input_text, output_text = self.apply_template(example)
             candidate_prompt = input_text + output_text + '\n\n'
+            count += 1
             token_count = utils.gpt3_tokenizer(candidate_prompt)
             prev_total = total_token
             if total_token + token_count < threshold:
@@ -59,6 +61,7 @@ class HotpotQA():
                 tolerance += 1
                 if tolerance > 1:
                     break
+        # print(f'Total samples in prompt: {count}')
         return text_prompt
     
     def run_llm(self, prompt, model, max_tokens, temperature=0.7, stop=['\n']):
@@ -104,6 +107,7 @@ class HotpotQA():
         preds = {}
         golds = []
         preds['answer'] = {}
+        num_prompt_lst = []
         for i, idx in enumerate(tqdm(val_idx)):
             example = val_data[int(idx)]
             input_text, output_text = self.apply_template(example)
@@ -116,28 +120,34 @@ class HotpotQA():
                 prompt = None
 
             if args.prompt == "text":
-                prompt = self.build_text_prompt(input_text)
+                prompt, num_prompt = self.build_text_prompt(input_text)
+                num_prompt_lst.append(num_prompt)
+
             elif args.prompt == "code":
                 prompt = self.build_code_prompt(input_text, prompt)
+        
+        with open('num_example_code_8000.pkl', 'wb') as f:
+            pickle.dump(num_prompt_lst, f)
+        f.close()
             
-            if args.prompt == 'text':
-                pred = self.run_llm(prompt + input_text + '\n\nAnswer:', args.model, args.completion_size)
-            else:
-                pred = self.run_llm(prompt + input_text, args.model, args.completion_size)
+        #     if args.prompt == 'text':
+        #         pred = self.run_llm(prompt + input_text + '\n\nAnswer:', args.model, args.completion_size)
+        #     else:
+        #         pred = self.run_llm(prompt + input_text, args.model, args.completion_size)
             
-            gold = example['answer']
+        #     gold = example['answer']
 
-            preds['answer'][f'seacow-{i}'] = pred
-            golds.append({'_id': f'seacow-{i}', 'answer': gold})
+        #     preds['answer'][f'seacow-{i}'] = pred
+        #     golds.append({'_id': f'seacow-{i}', 'answer': gold})
         
-        pred_name, gold_name = get_fname()
+        # pred_name, gold_name = get_fname()
         
-        with open(f'./result/{pred_name}.json', 'w') as f:
-            json.dump(preds, f, indent=4)
-        f.close()
-        with open(f'./result/{gold_name}.pkl', 'wb') as f:
-            pickle.dump(golds, f)
-        f.close()
+        # with open(f'./result/{pred_name}.json', 'w') as f:
+        #     json.dump(preds, f, indent=4)
+        # f.close()
+        # with open(f'./result/{gold_name}.pkl', 'wb') as f:
+        #     pickle.dump(golds, f)
+        # f.close()
     
     def evaluate():
         with open('pred.txt', 'r') as f:

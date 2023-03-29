@@ -36,12 +36,13 @@ class OpenPI():
 
         print(f'Total samples in prompt: {counter}')
         print(f'Average tokens per sample: {cur_len / counter}')
-        return prompt
+        return prompt, counter
 
     def build_code_prompt(self, max_len):
         train_dict = self.metadata['train'] 
         prompt = ''
         cur_len = 0
+        counter = 0
         for event_dict in train_dict.values():
             goal = event_dict['goal']
             steps = event_dict['steps']
@@ -53,7 +54,8 @@ class OpenPI():
                     break
                 else:
                     prompt += sub_prompt + '\n\n'
-        return prompt
+                    counter += 1
+        return prompt, counter
     
     def run_llm(self, prompt, model, temperature=0.7, stop=['\n\n']):
         model_name = {
@@ -92,7 +94,7 @@ class OpenPI():
         print(max_len)
 
         if args.prompt == "text":
-            prompt = self.build_text_prompt(max_len)
+            prompt, counter = self.build_text_prompt(max_len)
         elif args.prompt == "code":
             if args.style == 'comment':
                 prompt = open(f'./code-prompts/comment_prefix.py').read()
@@ -100,72 +102,76 @@ class OpenPI():
                 prompt = open(f'./code-prompts/class_prefix.py').read()
             else:
                 prompt = ''
-            prompt += self.build_code_prompt(max_len)
+            addition_prompt, counter = self.build_code_prompt(max_len)
+            prompt = prompt + addition_prompt
         
-        preds = []
-        golds = []
-        for id, example in tqdm(val_data.items(), position=0, leave=False):
-            goal = example['goal']
-            steps = example['steps']
-            if args.prompt == 'text':
-                cur_prompt = prompt + f'Goal: {goal}\n\n'
-                for i, step in enumerate(tqdm(steps, position=1, leave=False)):
-                    step_state_changes = step['state_changes']
-                    step_desc = step['description']
-                    cur_prompt += f'Step {i+1}: {step_desc}\n\n'
-                    cur_prompt += f'Entity status changes:\n'
-                    llm_pred = self.run_llm(cur_prompt, args.model, stop='\n\n')
-                    llm_pred = utils.parse_preds(llm_pred)
-                    if len(llm_pred) == 0:
-                        llm_pred.append('There will be no change.')
-                    for line in llm_pred:
-                        # entries = re.match(r'The (.*) is (.*) before and (.*) afterwards.', line)
-                        # print((entries.group(1), entries.group(2), entries.group(3)))
-                        cur_prompt += '- ' + line.strip() + '\n'
-                    cur_prompt += '\n'
-                    preds.append({'id': f'{str(id)}||{str(i+1)}', 'answers': llm_pred})
+        print(counter)
+        raise SystemExit()
+        
+        # preds = []
+        # golds = []
+        # for id, example in tqdm(val_data.items(), position=0, leave=False):
+        #     goal = example['goal']
+        #     steps = example['steps']
+        #     if args.prompt == 'text':
+        #         cur_prompt = prompt + f'Goal: {goal}\n\n'
+        #         for i, step in enumerate(tqdm(steps, position=1, leave=False)):
+        #             step_state_changes = step['state_changes']
+        #             step_desc = step['description']
+        #             cur_prompt += f'Step {i+1}: {step_desc}\n\n'
+        #             cur_prompt += f'Entity status changes:\n'
+        #             llm_pred = self.run_llm(cur_prompt, args.model, stop='\n\n')
+        #             llm_pred = utils.parse_preds(llm_pred)
+        #             if len(llm_pred) == 0:
+        #                 llm_pred.append('There will be no change.')
+        #             for line in llm_pred:
+        #                 # entries = re.match(r'The (.*) is (.*) before and (.*) afterwards.', line)
+        #                 # print((entries.group(1), entries.group(2), entries.group(3)))
+        #                 cur_prompt += '- ' + line.strip() + '\n'
+        #             cur_prompt += '\n'
+        #             preds.append({'id': f'{str(id)}||{str(i+1)}', 'answers': llm_pred})
 
-                    state_change_lst = []
-                    if step_state_changes:
-                        for state_change in step_state_changes:
-                            entity, attr, pre, post = state_change
-                            state_change_lst.append(f'The {attr.split("|")[0].strip()}) of ({entity.split("|")[0].strip()}) is ({pre.split("|")[0].strip()}) before and ({post.split("|")[0].strip()}) afterwards.')
-                    golds.append({'id': f'{str(id)}||{str(i+1)}', 'answers': state_change_lst})
+        #             state_change_lst = []
+        #             if step_state_changes:
+        #                 for state_change in step_state_changes:
+        #                     entity, attr, pre, post = state_change
+        #                     state_change_lst.append(f'The {attr.split("|")[0].strip()}) of ({entity.split("|")[0].strip()}) is ({pre.split("|")[0].strip()}) before and ({post.split("|")[0].strip()}) afterwards.')
+        #             golds.append({'id': f'{str(id)}||{str(i+1)}', 'answers': state_change_lst})
 
-            elif args.prompt == 'code':
-                cur_template = apply_template(goal, steps)
-                prompt_template = [lst[0] for lst in cur_template]
-                cur_gold = [ast.literal_eval(lst[1].strip()) for lst in cur_template]
-                for i, step_prompt in enumerate(tqdm(prompt_template, position=1, leave=False)):
-                    cur_prompt = prompt + step_prompt
-                    llm_pred = self.run_llm(cur_prompt, args.model, stop='\n\n').strip()
-                    print(llm_pred[-1])
+        #     elif args.prompt == 'code':
+        #         cur_template = apply_template(goal, steps)
+        #         prompt_template = [lst[0] for lst in cur_template]
+        #         cur_gold = [ast.literal_eval(lst[1].strip()) for lst in cur_template]
+        #         for i, step_prompt in enumerate(tqdm(prompt_template, position=1, leave=False)):
+        #             cur_prompt = prompt + step_prompt
+        #             llm_pred = self.run_llm(cur_prompt, args.model, stop='\n\n').strip()
+        #             print(llm_pred[-1])
 
-                    if llm_pred[-1] in ["'", '"']:
-                        llm_pred += ']'
+        #             if llm_pred[-1] in ["'", '"']:
+        #                 llm_pred += ']'
                     
-                    try:
-                        llm_pred = ast.literal_eval(llm_pred)
-                    except:
-                        llm_pred = ','.join(llm_pred.split(',')[:-1]) + ']'
-                        try:
-                            llm_pred = ast.literal_eval(llm_pred)
-                        except:
-                            llm_pred = []
+        #             try:
+        #                 llm_pred = ast.literal_eval(llm_pred)
+        #             except:
+        #                 llm_pred = ','.join(llm_pred.split(',')[:-1]) + ']'
+        #                 try:
+        #                     llm_pred = ast.literal_eval(llm_pred)
+        #                 except:
+        #                     llm_pred = []
                             
-                    if len(llm_pred) == 0:
-                        llm_pred.append('There will be no change.')
-                    preds.append({'id': f'{str(id)}||{str(i+1)}', 'answers': llm_pred})
-                golds += [{'id': f'{str(id)}||{str(i+1)}', 'answers': g} for i, g in enumerate(cur_gold)]
+        #             if len(llm_pred) == 0:
+        #                 llm_pred.append('There will be no change.')
+        #             preds.append({'id': f'{str(id)}||{str(i+1)}', 'answers': llm_pred})
+        #         golds += [{'id': f'{str(id)}||{str(i+1)}', 'answers': g} for i, g in enumerate(cur_gold)]
 
-        with open(f'./result/test_{pred_name}.jsonl', 'w') as f:
-            for d in preds:
-                json.dump(d, f)
-                f.write('\n')
-        with open(f'./result/test_{gold_name}.jsonl', 'w') as f:
-            for d in golds:
-                json.dump(d, f)
-                f.write('\n')
+        # with open(f'./result/test_{pred_name}.jsonl', 'w') as f:
+        #     for d in preds:
+        #         json.dump(d, f)
+        #         f.write('\n')
+        # with open(f'./result/test_{gold_name}.jsonl', 'w') as f:
+        #     for d in golds:
+        #         json.dump(d, f)
+        #         f.write('\n')
 
 
 def apply_text_template(goal, steps, train=True):
