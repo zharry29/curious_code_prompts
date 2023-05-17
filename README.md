@@ -10,6 +10,7 @@ The conda environment `/envs` should contain everything needed. If not, please i
 ## Organization
 Each task has a corresponding folder in `/datasets`. Take HellaSWAG for example: in `/datasets/HellaSWAG`: running
 > python hellaswag.py --prompt text|code1|code2|code3|code4 --model codex|davinci --max_prompt MAX_TOKENS
+
 produces an output file of a model (`code-davinci-002` or `text-davinci-002`) with a prompt format (text prompt or one of our 4 code prompts) and a context window (2000, 4000, or 8000 tokens). Additionally, it also performs evaluation which can be used to replicate Figure 3, 4 and Table 2 in the paper.
 
 ## Citation
