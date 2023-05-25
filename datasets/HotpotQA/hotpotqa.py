@@ -235,7 +235,7 @@ if __name__ == '__main__':
 
     inference_model = HotpotQA(apply_template)
     inference_model.predict(args.index)
-    # inference_model.evaluate()
+    inference_model.evaluate()
 
 
 
